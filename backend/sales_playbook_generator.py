@@ -57,6 +57,28 @@ class SalesPlaybookPDFGenerator:
             bulletIndent=10
         ))
 
+    def _safe_get_dict(self, intelligence: Dict, key: str, default=None) -> Dict:
+        """Safely get a nested dict field, parsing from JSON string if needed"""
+        import json
+
+        value = intelligence.get(key, default or {})
+
+        # If it's already a dict, return it
+        if isinstance(value, dict):
+            return value
+
+        # If it's a string, try to parse it as JSON
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, dict):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # Fallback to default
+        return default or {}
+
     def generate_playbook(self, lead_data: Dict, intelligence: Dict) -> bytes:
         """Generate complete sales playbook PDF"""
 
@@ -77,6 +99,7 @@ class SalesPlaybookPDFGenerator:
         # Add content sections
         self._add_cover_page(story, lead_data, intelligence)
         self._add_executive_summary(story, intelligence)
+        self._add_perplexity_research(story, intelligence)
         self._add_hot_buttons(story, intelligence)
         self._add_recommended_approach(story, intelligence)
         self._add_talking_points(story, intelligence)
@@ -106,12 +129,13 @@ class SalesPlaybookPDFGenerator:
         story.append(Spacer(1, 0.3 * inch))
 
         # Lead info table
+        budget_data = self._safe_get_dict(intelligence, 'budget')
         lead_info = [
             ['Industry:', lead_data.get('industry', 'N/A')],
             ['Location:', lead_data.get('location', 'N/A')],
             ['Employees:', str(lead_data.get('employee_count', 'Unknown'))],
             ['Lead Score:', f"{intelligence.get('confidence', 0)}/100"],
-            ['Investment Likelihood:', intelligence.get('budget', {}).get('investment_likelihood', 'Unknown')]
+            ['Investment Likelihood:', budget_data.get('investment_likelihood', 'Unknown')]
         ]
 
         table = Table(lead_info, colWidths=[2*inch, 3.5*inch])
@@ -153,6 +177,61 @@ class SalesPlaybookPDFGenerator:
         story.append(Paragraph(summary_text, self.styles['Normal']))
         story.append(Spacer(1, 0.3 * inch))
 
+    def _add_perplexity_research(self, story, intelligence: Dict):
+        """Add Perplexity AI research section"""
+        # Get research data using safe helper
+        perplexity_data = self._safe_get_dict(intelligence, 'perplexity_research')
+
+        # Skip section if no research data available
+        if not perplexity_data or not perplexity_data.get('has_recent_data'):
+            return
+
+        story.append(Paragraph("Recent Intelligence (Past 90 Days)", self.styles['SectionHeader']))
+
+        # Research summary
+        summary = perplexity_data.get('summary', '')
+        if summary and summary != 'No significant recent news or developments found in the past 90 days.':
+            story.append(Paragraph("<b>Summary:</b>", self.styles['Normal']))
+            story.append(Paragraph(summary, self.styles['Normal']))
+            story.append(Spacer(1, 0.15 * inch))
+
+        # Recent news
+        recent_news = perplexity_data.get('recent_news', '')
+        if recent_news:
+            story.append(Paragraph("<b>Recent News & Announcements:</b>", self.styles['Normal']))
+            story.append(Paragraph(recent_news, self.styles['Normal']))
+            story.append(Spacer(1, 0.15 * inch))
+
+        # Leadership updates
+        leadership = perplexity_data.get('leadership', '')
+        if leadership:
+            story.append(Paragraph("<b>Leadership Updates:</b>", self.styles['Normal']))
+            story.append(Paragraph(leadership, self.styles['Normal']))
+            story.append(Spacer(1, 0.15 * inch))
+
+        # Business developments
+        biz_dev = perplexity_data.get('business_developments', '')
+        if biz_dev:
+            story.append(Paragraph("<b>Business Developments:</b>", self.styles['Normal']))
+            story.append(Paragraph(biz_dev, self.styles['Normal']))
+            story.append(Spacer(1, 0.15 * inch))
+
+        # Market position
+        market_pos = perplexity_data.get('market_position', '')
+        if market_pos:
+            story.append(Paragraph("<b>Market Position:</b>", self.styles['Normal']))
+            story.append(Paragraph(market_pos, self.styles['Normal']))
+            story.append(Spacer(1, 0.15 * inch))
+
+        # Challenges & opportunities
+        challenges = perplexity_data.get('challenges_opportunities', '')
+        if challenges:
+            story.append(Paragraph("<b>Challenges & Opportunities:</b>", self.styles['Normal']))
+            story.append(Paragraph(challenges, self.styles['Normal']))
+            story.append(Spacer(1, 0.15 * inch))
+
+        story.append(Spacer(1, 0.2 * inch))
+
     def _add_hot_buttons(self, story, intelligence: Dict):
         """Add hot buttons section"""
         story.append(Paragraph("Hot Buttons & Pain Points", self.styles['SectionHeader']))
@@ -187,7 +266,7 @@ class SalesPlaybookPDFGenerator:
         """Add decision maker insights"""
         story.append(Paragraph("Decision Maker Intelligence", self.styles['SectionHeader']))
 
-        dm = intelligence.get('decision_maker', {})
+        dm = self._safe_get_dict(intelligence, 'decision_maker')
 
         dm_data = [
             ['Target Role:', dm.get('target_role', 'Unknown')],
@@ -218,7 +297,7 @@ class SalesPlaybookPDFGenerator:
         """Add budget analysis"""
         story.append(Paragraph("Budget Analysis", self.styles['SectionHeader']))
 
-        budget = intelligence.get('budget', {})
+        budget = self._safe_get_dict(intelligence, 'budget')
 
         budget_data = [
             ['Estimated Range:', budget.get('estimated_range', 'Unknown')],
@@ -242,7 +321,7 @@ class SalesPlaybookPDFGenerator:
         """Add competitive positioning"""
         story.append(Paragraph("Competitive Positioning", self.styles['SectionHeader']))
 
-        comp = intelligence.get('competitive_positioning', {})
+        comp = self._safe_get_dict(intelligence, 'competitive_positioning')
 
         # Likely competitors
         story.append(Paragraph("<b>Likely Competitors:</b>", self.styles['Normal']))
@@ -271,7 +350,7 @@ class SalesPlaybookPDFGenerator:
         """Add appointment setting strategy"""
         story.append(Paragraph("Appointment Setting Strategy", self.styles['SectionHeader']))
 
-        appt = intelligence.get('appointment_strategy', {})
+        appt = self._safe_get_dict(intelligence, 'appointment_strategy')
 
         appt_data = [
             ['Hook:', appt.get('hook', 'Free consultation')],
