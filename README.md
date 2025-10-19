@@ -6,23 +6,28 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 
 - **Automated Lead Discovery**: AI-powered web scraping to find Hawaii businesses needing tech services
 - **Intelligent Lead Scoring**: LangChain agents score leads based on multiple factors
+- **Perplexity AI Research**: Real-time company intelligence from the past 90 days (news, leadership, market position)
+- **PDF Sales Playbooks**: Professional downloadable playbooks with AI insights and Perplexity research
+- **Smart Email Templates**: Auto-generated emails in professional, casual, or consultative styles
+- **Decision Maker Finder**: Apollo.io and Hunter.io integration to find executive contacts
 - **Personalized Outreach**: Generate custom emails, SMS, and LinkedIn messages using Claude/Gemini
 - **Smart Appointment Booking**: Automated scheduling at your Honolulu office (1050 Queen Street, Suite 100)
 - **Multi-Channel Campaigns**: Email, SMS, and LinkedIn outreach orchestration
 - **Real-time Analytics**: Dashboard showing leads, conversions, and revenue potential
-- **Vector Search**: Semantic search using pgvector for lead intelligence
-- **HubSpot Integration**: Automatic CRM synchronization
-- **AI Insights**: LangChain-powered recommendations and opportunity detection
+- **HubSpot Integration**: Automatic CRM synchronization with leads, contacts, and intelligence notes
+- **Lead Status Tracking**: Track leads through NEW → RESEARCHED → IN_HUBSPOT lifecycle
+- **AI Insights**: Claude-powered sales intelligence with actionable recommendations
 
 ## Tech Stack
 
 **Backend:**
 - FastAPI (Python)
-- LangChain (Claude, Gemini, OpenAI)
-- PostgreSQL with pgvector
-- Firebase Firestore
-- Redis
-- Celery for background tasks
+- LangChain (Claude 3.5 Sonnet, Gemini, OpenAI)
+- Supabase (PostgreSQL)
+- Perplexity AI (Sonar Pro) for research
+- ReportLab for PDF generation
+- Redis (optional)
+- Celery for background tasks (optional)
 
 **Frontend:**
 - Next.js 14
@@ -33,13 +38,17 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 - Framer Motion
 
 **Integrations:**
-- Anthropic Claude API
+- Anthropic Claude API (3.5 Sonnet)
+- Perplexity AI (Sonar Pro)
 - Google Gemini API
 - OpenAI API
-- SendGrid (Email)
-- Twilio (SMS)
-- HubSpot (CRM)
-- Google Calendar API
+- SerpAPI (Google Maps/Business data)
+- Apollo.io (Decision maker contact finder)
+- Hunter.io (Email finder & verification)
+- HubSpot (CRM sync)
+- SendGrid (Email - optional)
+- Twilio (SMS - optional)
+- Google Calendar API (optional)
 
 ## Quick Start
 
@@ -204,13 +213,31 @@ Once the backend is running, visit http://localhost:8000/docs for interactive AP
 
 ### Key Endpoints
 
-- `POST /api/leads/discover` - Discover new leads
-- `GET /api/leads` - Get all leads with filtering
+**Lead Management:**
+- `POST /api/leads/discover` - Discover new leads from multiple sources
+- `GET /api/leads?status=NEW&min_score=70` - Get leads with filters (status, min_score)
 - `POST /api/leads/score` - Score a lead
+- `POST /api/leads/{lead_id}/intelligence?refresh=true` - Generate AI intelligence with Perplexity research
+- `GET /api/leads/{lead_id}/playbook` - Download PDF sales playbook
+- `POST /api/leads/{lead_id}/email-template?template_style=professional` - Generate email template
+- `POST /api/leads/{lead_id}/send-to-hubspot` - Sync lead to HubSpot CRM
+
+**Outreach & Campaigns:**
 - `POST /api/outreach/generate` - Generate personalized outreach
 - `POST /api/outreach/send` - Send outreach message
+- `POST /api/campaigns` - Create outreach campaign
+- `GET /api/campaigns` - Get all campaigns
+- `POST /api/campaigns/{campaign_id}/leads` - Add leads to campaign
+- `POST /api/campaigns/{campaign_id}/start` - Start campaign
+
+**Appointments:**
+- `GET /api/appointments/slots` - Get available appointment slots
 - `POST /api/appointments/book` - Book an appointment
+- `GET /api/appointments` - Get all appointments
+
+**Analytics:**
 - `GET /api/analytics/dashboard` - Get dashboard analytics
+- `GET /health` - Health check endpoint
 
 ## Project Structure
 

@@ -21,6 +21,7 @@ Your platform now has **3 powerful AI features** to supercharge your sales proce
 ### What You Get:
 
 - **Executive Summary** - Quick snapshot of the opportunity
+- **Perplexity Research** - Real-time intelligence from the past 90 days (news, leadership, market position)
 - **Hot Buttons** (5 items) - Pain points where you can add value
 - **Recommended Approach** - Strategic guidance on engagement
 - **Talking Points** (6 items) - Specific value propositions
@@ -29,6 +30,8 @@ Your platform now has **3 powerful AI features** to supercharge your sales proce
 - **Competitive Positioning** - Your advantages vs competitors
 - **Appointment Strategy** - Hooks, format, follow-up cadence
 - **Next Steps** - Actionable items to move the deal forward
+
+**NEW**: Intelligence now includes Perplexity AI research that automatically gathers recent company news, leadership changes, business developments, and market positioning from the past 90 days.
 
 ### How to Use:
 
@@ -89,14 +92,21 @@ curl -X POST "http://localhost:8000/api/leads/lead_1/intelligence"
 
 **Content Sections:**
 1. Executive Summary
-2. Hot Buttons & Pain Points
-3. Recommended Approach
-4. Key Talking Points
-5. Decision Maker Intelligence
-6. Budget Analysis
-7. Competitive Positioning
-8. Appointment Setting Strategy
-9. Next Steps Checklist
+2. **Recent Intelligence (Past 90 Days)** - NEW! Perplexity AI research including:
+   - Research summary
+   - Recent news & announcements
+   - Leadership updates
+   - Business developments
+   - Market position
+   - Challenges & opportunities
+3. Hot Buttons & Pain Points
+4. Recommended Approach
+5. Key Talking Points
+6. Decision Maker Intelligence
+7. Budget Analysis
+8. Competitive Positioning
+9. Appointment Setting Strategy
+10. Next Steps Checklist
 
 ### How to Use:
 
