@@ -1385,10 +1385,12 @@ async def discover_leads(
         if 'contact_phone' in supabase_lead_dict:
             supabase_lead_dict['phone'] = supabase_lead_dict.pop('contact_phone')
         # Remove fields not in Supabase schema
-        if 'status' in supabase_lead_dict:
-            del supabase_lead_dict['status']
         if 'tech_stack' in supabase_lead_dict:
             del supabase_lead_dict['tech_stack']
+
+        # Set status to NEW for newly discovered leads
+        supabase_lead_dict['status'] = 'NEW'
+        supabase_lead_dict['last_activity_date'] = datetime.now().isoformat()
 
         # Save to Supabase
         saved_lead = await supabase_db.upsert_lead(supabase_lead_dict)
@@ -1463,21 +1465,7 @@ async def get_leads(status: Optional[str] = None, min_score: Optional[float] = N
 @app.post("/api/leads/{lead_id}/intelligence")
 async def get_lead_intelligence(lead_id: str, refresh: bool = False):
     """Get comprehensive AI sales intelligence for a specific lead"""
-    # Check for cached intelligence first (unless refresh is requested)
-    if not refresh:
-        cached_intelligence = await supabase_db.get_intelligence(lead_id)
-
-        if cached_intelligence:
-            print(f"✓ Using cached intelligence for {lead_id}")
-            return {
-                "lead_id": lead_id,
-                "intelligence": cached_intelligence,
-                "cached": True
-            }
-    else:
-        print(f"🔄 Refresh requested - regenerating intelligence for {lead_id}")
-
-    # Find the lead
+    # Find the lead first (needed for both cached and fresh intelligence)
     lead_data = await supabase_db.get_lead_by_id(lead_id)
 
     if not lead_data:
@@ -1490,17 +1478,42 @@ async def get_lead_intelligence(lead_id: str, refresh: bool = False):
     if not lead_data:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    # Generate comprehensive sales intelligence
-    intelligence = await sales_intelligence.analyze_lead_for_sales(lead_data)
+    # Check for cached intelligence first (unless refresh is requested)
+    intelligence = None
+    cached = False
+    if not refresh:
+        intelligence = await supabase_db.get_intelligence(lead_id)
+        if intelligence:
+            cached = True
+            print(f"✓ Using cached intelligence for {lead_id}")
+    else:
+        print(f"🔄 Refresh requested - regenerating intelligence for {lead_id}")
 
-    # Save intelligence to Supabase for caching
-    await supabase_db.save_intelligence(lead_id, intelligence)
-    print(f"✓ Saved intelligence for {lead_id} to database")
+    # Generate fresh intelligence if not cached
+    if not intelligence:
+        intelligence = await sales_intelligence.analyze_lead_for_sales(lead_data)
+        await supabase_db.save_intelligence(lead_id, intelligence)
+        print(f"✓ Saved intelligence for {lead_id} to database")
+
+    # Update lead status to RESEARCHED (only if currently NEW, don't override IN_HUBSPOT)
+    current_status = lead_data.get('status', 'NEW')
+    if current_status == 'NEW':
+        await supabase_db.update_lead(lead_id, {
+            "status": "RESEARCHED",
+            "last_activity_date": datetime.now().isoformat()
+        })
+        print(f"✓ Updated {lead_id} status: NEW → RESEARCHED")
+    else:
+        # Just update last_activity_date but keep current status
+        await supabase_db.update_lead(lead_id, {
+            "last_activity_date": datetime.now().isoformat()
+        })
+        print(f"✓ Intelligence accessed for {lead_id} (status remains {current_status})")
 
     return {
         "lead_id": lead_id,
         "intelligence": intelligence,
-        "cached": False
+        "cached": cached
     }
 
 @app.get("/api/leads/{lead_id}/playbook")
@@ -1527,7 +1540,53 @@ async def download_sales_playbook(lead_id: str):
         intelligence = await sales_intelligence.analyze_lead_for_sales(lead_data)
         await supabase_db.save_intelligence(lead_id, intelligence)
 
+    # Ensure intelligence is a dict (parse if it's a JSON string)
+    import json
+    print(f"🔍 Intelligence type before parsing: {type(intelligence).__name__}")
+    if isinstance(intelligence, str):
+        print(f"⚠️  Intelligence is a string, parsing to dict...")
+        intelligence = json.loads(intelligence)
+        print(f"✓ Intelligence parsed successfully, type is now: {type(intelligence).__name__}")
+    else:
+        print(f"✓ Intelligence is already a {type(intelligence).__name__}, no parsing needed")
+
+    # Recursively parse any nested JSON strings (double-serialized data)
+    def parse_nested_json(obj):
+        """Recursively parse nested JSON strings in a dict"""
+        if isinstance(obj, dict):
+            return {k: parse_nested_json(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [parse_nested_json(item) for item in obj]
+        elif isinstance(obj, str):
+            # Try to parse as JSON, if it fails just return the string
+            try:
+                parsed = json.loads(obj)
+                # Recursively parse in case of triple-nesting
+                return parse_nested_json(parsed)
+            except (json.JSONDecodeError, TypeError):
+                return obj
+        else:
+            return obj
+
+    print(f"🔧 Parsing nested JSON strings...")
+    intelligence = parse_nested_json(intelligence)
+    print(f"✓ Nested parsing complete")
+
+    # Debug: Check budget field specifically
+    budget_field = intelligence.get('budget', 'NOT_FOUND')
+    print(f"🔍 Budget field type: {type(budget_field).__name__}")
+    print(f"🔍 Budget field value (first 200 chars): {str(budget_field)[:200]}")
+
+    # If budget is still a string, force parse it
+    if isinstance(budget_field, str) and budget_field != 'NOT_FOUND':
+        try:
+            intelligence['budget'] = json.loads(budget_field)
+            print(f"✓ Force-parsed budget field to: {type(intelligence['budget']).__name__}")
+        except Exception as e:
+            print(f"❌ Could not parse budget field: {e}")
+
     # Generate PDF
+    print(f"📄 Generating PDF with intelligence type: {type(intelligence).__name__}")
     pdf_bytes = pdf_generator.generate_playbook(lead_data, intelligence)
 
     # Return PDF
@@ -1864,6 +1923,389 @@ async def send_outreach(lead_id: str, channel: str, content: str):
         "message": "Outreach sent successfully" if sent else "Outreach logged (service not configured)",
         "sent": sent
     }
+
+def _generate_hubspot_note(lead_id: str, lead_data: Dict, intelligence: Dict) -> str:
+    """Generate formatted HTML note content for HubSpot with PDF playbook link"""
+
+    company_name = lead_data.get('company_name', 'Company')
+    lead_score = intelligence.get('confidence', intelligence.get('lead_score', 0))
+
+    # Start building HTML note
+    html = f"""
+<div style="font-family: Arial, sans-serif; color: #33475b;">
+    <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">
+        AI Sales Intelligence Report
+    </h2>
+    <p style="background-color: #f5f8fa; padding: 12px; border-left: 4px solid #2563eb; margin: 16px 0;">
+        <strong>Lead Score:</strong> {lead_score}/100 |
+        <strong>Generated:</strong> {datetime.now().strftime('%B %d, %Y at %I:%M %p HST')}
+    </p>
+"""
+
+    # Add PDF Playbook Download Link
+    playbook_url = f"http://localhost:8000/api/leads/{lead_id}/playbook"
+    html += f"""
+    <div style="background-color: #e3f2fd; border: 1px solid #2563eb; border-radius: 4px; padding: 16px; margin: 20px 0;">
+        <h3 style="color: #1e3a8a; margin-top: 0;">📄 Sales Playbook</h3>
+        <p>Complete PDF sales playbook with all intelligence, research, and talking points:</p>
+        <p>
+            <a href="{playbook_url}"
+               style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+                Download Sales Playbook PDF
+            </a>
+        </p>
+        <p style="font-size: 12px; color: #666; margin-bottom: 0;">
+            Link: <a href="{playbook_url}">{playbook_url}</a>
+        </p>
+    </div>
+"""
+
+    # Executive Summary
+    if intelligence.get('executive_summary'):
+        html += f"""
+    <h3 style="color: #1e3a8a; margin-top: 24px; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px;">
+        Executive Summary
+    </h3>
+    <p style="line-height: 1.6;">{intelligence['executive_summary']}</p>
+"""
+
+    # Recent Intelligence (Perplexity Research)
+    perplexity_data = intelligence.get('perplexity_research', {})
+    if isinstance(perplexity_data, str):
+        import json
+        try:
+            perplexity_data = json.loads(perplexity_data)
+        except:
+            perplexity_data = {}
+
+    if perplexity_data and perplexity_data.get('has_recent_data'):
+        html += f"""
+    <h3 style="color: #1e3a8a; margin-top: 24px; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px;">
+        Recent Intelligence (Past 90 Days)
+    </h3>
+    <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 12px 0;">
+        <strong>⚡ Real-time research from Perplexity AI</strong>
+    </div>
+"""
+        if perplexity_data.get('summary'):
+            html += f'<p style="line-height: 1.6;"><strong>Summary:</strong> {perplexity_data["summary"]}</p>'
+        if perplexity_data.get('recent_news'):
+            html += f'<p style="line-height: 1.6;"><strong>Recent News:</strong> {perplexity_data["recent_news"]}</p>'
+        if perplexity_data.get('leadership'):
+            html += f'<p style="line-height: 1.6;"><strong>Leadership:</strong> {perplexity_data["leadership"]}</p>'
+        if perplexity_data.get('business_developments'):
+            html += f'<p style="line-height: 1.6;"><strong>Business Developments:</strong> {perplexity_data["business_developments"]}</p>'
+
+    # Hot Buttons
+    hot_buttons = intelligence.get('hot_buttons', [])
+    if hot_buttons and isinstance(hot_buttons, list):
+        html += f"""
+    <h3 style="color: #1e3a8a; margin-top: 24px; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px;">
+        Hot Buttons & Pain Points
+    </h3>
+    <ul style="line-height: 1.8;">
+"""
+        for button in hot_buttons[:5]:
+            html += f'        <li style="color: #d32f2f;"><strong>{button}</strong></li>\n'
+        html += "    </ul>\n"
+
+    # Talking Points
+    talking_points = intelligence.get('talking_points', [])
+    if talking_points and isinstance(talking_points, list):
+        html += f"""
+    <h3 style="color: #1e3a8a; margin-top: 24px; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px;">
+        Key Talking Points
+    </h3>
+    <ul style="line-height: 1.8;">
+"""
+        for point in talking_points[:6]:
+            html += f'        <li style="color: #2e7d32;"><strong>{point}</strong></li>\n'
+        html += "    </ul>\n"
+
+    # Decision Maker
+    decision_maker = intelligence.get('decision_maker', {})
+    if isinstance(decision_maker, str):
+        import json
+        try:
+            decision_maker = json.loads(decision_maker)
+        except:
+            decision_maker = {}
+
+    if decision_maker:
+        html += f"""
+    <h3 style="color: #1e3a8a; margin-top: 24px; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px;">
+        Decision Maker Intelligence
+    </h3>
+    <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+        <tr style="background-color: #f5f8fa;">
+            <td style="padding: 8px; border: 1px solid #cbd5e0; font-weight: bold; width: 30%;">Target Role:</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e0;">{decision_maker.get('target_role', 'Unknown')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #cbd5e0; font-weight: bold;">Best Contact:</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e0;">{decision_maker.get('best_contact', 'Email + LinkedIn')}</td>
+        </tr>
+    </table>
+"""
+        priorities = decision_maker.get('priorities', [])
+        if priorities and isinstance(priorities, list):
+            html += '    <p><strong>Their Priorities:</strong></p>\n    <ul>\n'
+            for priority in priorities:
+                html += f'        <li>{priority}</li>\n'
+            html += '    </ul>\n'
+
+    # Budget Analysis
+    budget = intelligence.get('budget', {})
+    if isinstance(budget, str):
+        import json
+        try:
+            budget = json.loads(budget)
+        except:
+            budget = {}
+
+    if budget:
+        html += f"""
+    <h3 style="color: #1e3a8a; margin-top: 24px; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px;">
+        Budget Analysis
+    </h3>
+    <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+        <tr style="background-color: #f5f8fa;">
+            <td style="padding: 8px; border: 1px solid #cbd5e0; font-weight: bold; width: 30%;">Estimated Range:</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e0;">{budget.get('estimated_range', 'Unknown')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #cbd5e0; font-weight: bold;">Investment Likelihood:</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e0;">{budget.get('investment_likelihood', 'Unknown')}</td>
+        </tr>
+    </table>
+"""
+
+    # Appointment Strategy
+    appt_strategy = intelligence.get('appointment_strategy', {})
+    if isinstance(appt_strategy, str):
+        import json
+        try:
+            appt_strategy = json.loads(appt_strategy)
+        except:
+            appt_strategy = {}
+
+    if appt_strategy and isinstance(appt_strategy, dict):
+        hook = appt_strategy.get('hook', 'Free consultation')
+        html += f"""
+    <h3 style="color: #1e3a8a; margin-top: 24px; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px;">
+        Appointment Strategy
+    </h3>
+    <div style="background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 12px; margin: 12px 0;">
+        <strong>Recommended Hook:</strong> {hook}
+    </div>
+    <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+        <tr style="background-color: #f5f8fa;">
+            <td style="padding: 8px; border: 1px solid #cbd5e0; font-weight: bold; width: 30%;">Format:</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e0;">{appt_strategy.get('format', 'In-person meeting')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border: 1px solid #cbd5e0; font-weight: bold;">Follow-up Cadence:</td>
+            <td style="padding: 8px; border: 1px solid #cbd5e0;">{appt_strategy.get('follow_up_cadence', 'Weekly')}</td>
+        </tr>
+    </table>
+"""
+
+    # Next Steps
+    next_steps = intelligence.get('next_steps', [])
+    if next_steps and isinstance(next_steps, list):
+        html += f"""
+    <h3 style="color: #1e3a8a; margin-top: 24px; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px;">
+        Recommended Next Steps
+    </h3>
+    <ol style="line-height: 1.8;">
+"""
+        for step in next_steps:
+            html += f'        <li>{step}</li>\n'
+        html += "    </ol>\n"
+
+    # Footer
+    html += f"""
+    <hr style="margin: 24px 0; border: none; border-top: 1px solid #cbd5e0;">
+    <p style="font-size: 12px; color: #718096; text-align: center;">
+        <strong>LeniLani Consulting</strong><br>
+        1050 Queen Street, Suite 100, Honolulu, HI 96814<br>
+        AI-Powered Sales Intelligence | Generated with Claude 3.5 Sonnet & Perplexity AI
+    </p>
+</div>
+"""
+
+    return html
+
+@app.post("/api/leads/{lead_id}/send-to-hubspot")
+async def send_lead_to_hubspot(lead_id: str):
+    """Send lead and intelligence data to HubSpot CRM"""
+
+    if not hubspot_client:
+        raise HTTPException(
+            status_code=503,
+            detail="HubSpot integration not configured. Please add HUBSPOT_API_KEY to your .env file."
+        )
+
+    # Fetch lead data from Supabase
+    lead_data = await supabase_db.get_lead_by_id(lead_id)
+
+    if not lead_data:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    # Check if lead has already been sent to HubSpot
+    if lead_data.get('hubspot_company_id'):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Lead already sent to HubSpot (Company ID: {lead_data.get('hubspot_company_id')}). Cannot create duplicate."
+        )
+
+    # Fetch intelligence data
+    intelligence = await supabase_db.get_intelligence(lead_id)
+
+    try:
+        # Prepare company data for HubSpot
+        company_properties = {
+            "name": lead_data.get('company_name'),
+            "domain": lead_data.get('website', '').replace('https://', '').replace('http://', '').split('/')[0] if lead_data.get('website') else '',
+            "city": lead_data.get('location', '').split(',')[0] if lead_data.get('location') else '',
+            "state": "Hawaii",
+            "country": "United States",
+            "numberofemployees": lead_data.get('employee_count'),
+            "description": lead_data.get('description', ''),
+            "phone": lead_data.get('phone', ''),
+            "address": lead_data.get('location', ''),
+        }
+
+        # Add custom properties if intelligence is available
+        if intelligence:
+            # Extract hot buttons as comma-separated string
+            hot_buttons = intelligence.get('hot_buttons', [])
+            if isinstance(hot_buttons, list):
+                company_properties["hs_lead_status"] = "NEW"
+
+                # Generate formatted HTML note content
+                notes_content = _generate_hubspot_note(lead_id, lead_data, intelligence)
+
+        # Create company in HubSpot
+        from hubspot.crm.companies import SimplePublicObjectInput
+        company_input = SimplePublicObjectInput(properties={k: v for k, v in company_properties.items() if v})
+
+        company_response = hubspot_client.crm.companies.basic_api.create(
+            simple_public_object_input_for_create=company_input
+        )
+        company_id = company_response.id
+
+        # Create contact if decision maker info is available
+        contact_id = None
+        if intelligence and intelligence.get('decision_maker'):
+            decision_maker = intelligence.get('decision_maker')
+
+            # Parse decision maker data
+            if isinstance(decision_maker, str):
+                # Try to extract name and email from string
+                import re
+                email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', decision_maker)
+                name_parts = decision_maker.split()
+
+                contact_properties = {
+                    "email": email_match.group(0) if email_match else f"contact@{company_properties['domain']}",
+                    "firstname": name_parts[0] if name_parts else "Contact",
+                    "lastname": name_parts[-1] if len(name_parts) > 1 else "Person",
+                    "company": lead_data.get('company_name'),
+                    "jobtitle": "Decision Maker",
+                    "phone": lead_data.get('phone', ''),
+                }
+            elif isinstance(decision_maker, dict):
+                contact_properties = {
+                    "email": decision_maker.get('email', f"contact@{company_properties['domain']}"),
+                    "firstname": decision_maker.get('first_name', 'Contact'),
+                    "lastname": decision_maker.get('last_name', 'Person'),
+                    "company": lead_data.get('company_name'),
+                    "jobtitle": decision_maker.get('title', 'Decision Maker'),
+                    "phone": decision_maker.get('phone', lead_data.get('phone', '')),
+                }
+
+            # Create contact in HubSpot
+            from hubspot.crm.contacts import SimplePublicObjectInput as ContactInput
+            contact_input = ContactInput(properties={k: v for k, v in contact_properties.items() if v})
+
+            try:
+                contact_response = hubspot_client.crm.contacts.basic_api.create(
+                    simple_public_object_input_for_create=contact_input
+                )
+                contact_id = contact_response.id
+
+                # Associate contact with company using v4 API
+                from hubspot.crm.associations.v4 import BatchInputPublicAssociationMultiPost, PublicAssociationMultiPost
+                association_spec = PublicAssociationMultiPost(
+                    _from={"id": str(contact_id)},
+                    to={"id": str(company_id)},
+                    types=[{"associationCategory": "HUBSPOT_DEFINED", "associationTypeId": 279}]  # Contact to Company
+                )
+                hubspot_client.crm.associations.v4.batch_api.create(
+                    from_object_type="contacts",
+                    to_object_type="companies",
+                    batch_input_public_association_multi_post=BatchInputPublicAssociationMultiPost(inputs=[association_spec])
+                )
+            except Exception as contact_error:
+                print(f"Error creating contact: {contact_error}")
+                # Continue even if contact creation fails
+
+        # Add engagement note with intelligence data
+        if intelligence and company_id:
+            try:
+                import time
+                from hubspot.crm.objects.notes import SimplePublicObjectInput as NoteInput
+                # Convert to Unix timestamp in milliseconds
+                timestamp_ms = int(time.time() * 1000)
+                note_properties = {
+                    "hs_note_body": notes_content,
+                    "hs_timestamp": str(timestamp_ms)
+                }
+                note_input = NoteInput(properties=note_properties)
+                note_response = hubspot_client.crm.objects.notes.basic_api.create(
+                    simple_public_object_input_for_create=note_input
+                )
+
+                # Associate note with company using v4 API
+                from hubspot.crm.associations.v4 import BatchInputPublicAssociationMultiPost, PublicAssociationMultiPost
+                note_association_spec = PublicAssociationMultiPost(
+                    _from={"id": str(note_response.id)},
+                    to={"id": str(company_id)},
+                    types=[{"associationCategory": "HUBSPOT_DEFINED", "associationTypeId": 190}]  # Note to Company
+                )
+                hubspot_client.crm.associations.v4.batch_api.create(
+                    from_object_type="notes",
+                    to_object_type="companies",
+                    batch_input_public_association_multi_post=BatchInputPublicAssociationMultiPost(inputs=[note_association_spec])
+                )
+            except Exception as note_error:
+                print(f"Error creating note: {note_error}")
+                # Continue even if note creation fails
+
+        # Update lead in Supabase to mark as synced
+        await supabase_db.update_lead(lead_id, {
+            "hubspot_company_id": company_id,
+            "hubspot_contact_id": contact_id,
+            "hubspot_synced_at": datetime.now().isoformat(),
+            "status": "IN_HUBSPOT",
+            "last_activity_date": datetime.now().isoformat()
+        })
+
+        return {
+            "success": True,
+            "message": "Lead successfully sent to HubSpot",
+            "hubspot_company_id": company_id,
+            "hubspot_contact_id": contact_id,
+            "hubspot_url": f"https://app.hubspot.com/contacts/{company_id}/company/{company_id}"
+        }
+
+    except Exception as e:
+        print(f"HubSpot sync error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to send lead to HubSpot: {str(e)}"
+        )
 
 @app.get("/api/appointments/slots")
 async def get_available_slots():
