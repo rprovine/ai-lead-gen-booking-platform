@@ -4,19 +4,31 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 
 ## Features
 
+### Lead Discovery & Enrichment
+- **Smart Query Rotation**: Intelligent search query rotation system that cycles through multiple variations to discover diverse leads
 - **Automated Lead Discovery**: AI-powered web scraping to find Hawaii businesses needing tech services
+- **ICP Management**: Define and manage your Ideal Customer Profile with smart targeting
+- **Lead Enrichment Pipeline**: Automated workflow to enrich leads with Perplexity research and AI-generated playbooks
 - **Intelligent Lead Scoring**: LangChain agents score leads based on multiple factors
+- **Lead Status Tracking**: Track leads through NEW → RESEARCHED → IN_HUBSPOT lifecycle
+
+### AI-Powered Intelligence
 - **Perplexity AI Research**: Real-time company intelligence from the past 90 days (news, leadership, market position)
+- **Enhanced Contact Finding**: Multi-source decision maker discovery using Apollo.io, Hunter.io, Perplexity AI, and Google Search
 - **PDF Sales Playbooks**: Professional downloadable playbooks with AI insights and Perplexity research
+- **AI Insights**: Claude-powered sales intelligence with actionable recommendations
+
+### Outreach & CRM
 - **Smart Email Templates**: Auto-generated emails in professional, casual, or consultative styles
-- **Decision Maker Finder**: Apollo.io and Hunter.io integration to find executive contacts
 - **Personalized Outreach**: Generate custom emails, SMS, and LinkedIn messages using Claude/Gemini
 - **Smart Appointment Booking**: Automated scheduling at your Honolulu office (1050 Queen Street, Suite 100)
 - **Multi-Channel Campaigns**: Email, SMS, and LinkedIn outreach orchestration
+- **HubSpot Integration**: Automatic CRM synchronization with leads, contacts, companies, and formatted intelligence notes
+
+### Analytics & Automation
 - **Real-time Analytics**: Dashboard showing leads, conversions, and revenue potential
-- **HubSpot Integration**: Automatic CRM synchronization with leads, contacts, and intelligence notes
-- **Lead Status Tracking**: Track leads through NEW → RESEARCHED → IN_HUBSPOT lifecycle
-- **AI Insights**: Claude-powered sales intelligence with actionable recommendations
+- **Automated Daily Discovery**: Cron job system for hands-free lead generation
+- **Database Migration Tools**: Easy schema updates and data management
 
 ## Tech Stack
 
@@ -39,13 +51,15 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 
 **Integrations:**
 - Anthropic Claude API (3.5 Sonnet)
-- Perplexity AI (Sonar Pro)
+- Perplexity AI (Sonar Pro - research & contact discovery)
 - Google Gemini API
 - OpenAI API
 - SerpAPI (Google Maps/Business data)
+- Google Custom Search API (Contact discovery)
 - Apollo.io (Decision maker contact finder)
 - Hunter.io (Email finder & verification)
-- HubSpot (CRM sync)
+- RocketReach (Executive contact data)
+- HubSpot (Full CRM sync with contacts, companies, and notes)
 - SendGrid (Email - optional)
 - Twilio (SMS - optional)
 - Google Calendar API (optional)
@@ -177,12 +191,31 @@ OFFICE_ADDRESS=1050 Queen Street, Suite 100, Honolulu, HI 96814
 ### 1. Discover Leads
 
 Click the **"Discover New Leads"** button in the dashboard. The AI will:
-- Search for Hawaii businesses matching your criteria
+- Use smart query rotation to search for diverse Hawaii businesses
 - Analyze their websites for opportunities
 - Score each lead based on multiple factors
+- Find decision maker contact information from multiple sources
 - Display them in your pipeline
 
-### 2. Generate Outreach
+### 2. Enrich Leads
+
+The enrichment pipeline automatically:
+- Conducts Perplexity AI research on each company
+- Finds decision maker contacts (Apollo, Hunter, Perplexity, Google)
+- Generates personalized PDF sales playbooks
+- Creates AI-powered sales intelligence
+- Updates lead status: NEW → RESEARCHED
+
+### 3. Sync to HubSpot
+
+Send enriched leads to HubSpot CRM:
+- Creates/updates contact records for decision makers
+- Creates/updates company records
+- Adds formatted intelligence notes with research
+- Links to downloadable PDF playbooks
+- Updates lead status: RESEARCHED → IN_HUBSPOT
+
+### 4. Generate Outreach
 
 For each lead, you can:
 - Click the email icon to generate a personalized email
@@ -190,7 +223,7 @@ For each lead, you can:
 - Review and edit the AI-generated content
 - Send directly through the platform
 
-### 3. Book Appointments
+### 5. Book Appointments
 
 Click **"Book Meeting"** to schedule an appointment at your Honolulu office. The system will:
 - Find available time slots
@@ -198,7 +231,7 @@ Click **"Book Meeting"** to schedule an appointment at your Honolulu office. The
 - Send confirmations to the lead
 - Add reminders
 
-### 4. Monitor Analytics
+### 6. Monitor Analytics
 
 The dashboard shows:
 - Total leads discovered
@@ -206,6 +239,22 @@ The dashboard shows:
 - Appointments booked
 - Conversion rate
 - Revenue potential
+
+### 7. Automated Daily Discovery (Optional)
+
+Set up a cron job for hands-free lead generation:
+```bash
+# Run the setup script
+cd backend
+chmod +x daily_discovery.sh
+./setup_hubspot.sh  # Configure HubSpot integration first
+
+# Add to crontab for daily 9 AM runs
+crontab -e
+# Add: 0 9 * * * /path/to/backend/daily_discovery.sh
+```
+
+See `backend/CRON_JOB_SETUP.md` for detailed instructions.
 
 ## API Documentation
 
@@ -244,23 +293,48 @@ Once the backend is running, visit http://localhost:8000/docs for interactive AP
 ```
 ai-lead-gen-booking-platform/
 ├── backend/
-│   ├── main.py                 # FastAPI application
-│   ├── requirements.txt        # Python dependencies
-│   ├── .env                    # Environment variables
+│   ├── main.py                          # FastAPI application
+│   ├── database.py                      # Supabase database client
+│   ├── executive_finder.py              # Multi-source contact finder
+│   ├── lead_enrichment_pipeline.py      # Automated enrichment workflow
+│   ├── query_manager.py                 # Smart query rotation system
+│   ├── icp_manager.py                   # ICP management
+│   ├── requirements.txt                 # Python dependencies
+│   ├── .env.template                    # Environment variables template
+│   ├── migrations/                      # Database migration scripts
+│   │   ├── add_decision_makers_column.sql
+│   │   ├── add_hubspot_fields.sql
+│   │   └── add_status_tracking.sql
+│   ├── Documentation/
+│   │   ├── COMPLETE_SYSTEM_SUMMARY.md   # Full system overview
+│   │   ├── HOW_IT_WORKS.md              # Workflow documentation
+│   │   ├── HUBSPOT_INTEGRATION.md       # HubSpot setup guide
+│   │   ├── SMART_DISCOVERY_README.md    # Query rotation docs
+│   │   ├── ENRICHMENT_WORKFLOW.md       # Enrichment process
+│   │   ├── QUICK_REFERENCE.md           # Common commands
+│   │   └── CRON_JOB_SETUP.md            # Automation setup
+│   ├── Utility Scripts/
+│   │   ├── setup_hubspot.sh             # HubSpot configuration
+│   │   ├── daily_discovery.sh           # Cron job script
+│   │   ├── enrich_researched_leads.py   # Enrichment utility
+│   │   ├── apply_migration.py           # Database migrations
+│   │   ├── reload_schema.py             # Schema management
+│   │   ├── reset_lead_status.py         # Status reset utility
+│   │   └── test_*.py                    # Testing utilities
 │   └── Dockerfile
 ├── frontend/
 │   ├── app/
-│   │   ├── page.tsx           # Main dashboard
-│   │   ├── layout.tsx         # App layout
-│   │   └── globals.css        # Global styles
+│   │   ├── page.tsx                     # Main dashboard
+│   │   ├── layout.tsx                   # App layout
+│   │   └── globals.css                  # Global styles
 │   ├── components/
-│   │   └── ui/                # shadcn/ui components
+│   │   └── ui/                          # shadcn/ui components
 │   ├── lib/
-│   │   └── utils.ts           # Utility functions
+│   │   └── utils.ts                     # Utility functions
 │   ├── package.json
 │   └── Dockerfile
 ├── infrastructure/
-│   └── deploy.sh              # Deployment script
+│   └── deploy.sh                        # Deployment script
 ├── docker-compose.yml
 ├── README.md
 └── API_KEYS_GUIDE.md
@@ -364,11 +438,26 @@ flake8 .
 npm run lint
 ```
 
+## Documentation
+
+Comprehensive guides are available in the `backend/` directory:
+
+- **[COMPLETE_SYSTEM_SUMMARY.md](backend/COMPLETE_SYSTEM_SUMMARY.md)** - Complete system architecture and workflow overview
+- **[HOW_IT_WORKS.md](backend/HOW_IT_WORKS.md)** - Detailed explanation of the lead generation process
+- **[HUBSPOT_INTEGRATION.md](backend/HUBSPOT_INTEGRATION.md)** - HubSpot setup and integration guide
+- **[SMART_DISCOVERY_README.md](backend/SMART_DISCOVERY_README.md)** - Query rotation system documentation
+- **[ENRICHMENT_WORKFLOW.md](backend/ENRICHMENT_WORKFLOW.md)** - Lead enrichment pipeline details
+- **[QUICK_REFERENCE.md](backend/QUICK_REFERENCE.md)** - Common commands and workflows
+- **[CRON_JOB_SETUP.md](backend/CRON_JOB_SETUP.md)** - Automated discovery setup guide
+- **[QUERY_ROTATION_GUIDE.md](backend/QUERY_ROTATION_GUIDE.md)** - Smart query management
+- **[SYSTEM_VS_HUBSPOT.md](backend/SYSTEM_VS_HUBSPOT.md)** - Understanding system vs HubSpot data flow
+
 ## Support
 
 For issues, questions, or contributions:
-- Check the [API_KEYS_GUIDE.md](./API_KEYS_GUIDE.md)
-- Review FastAPI docs: http://localhost:8000/docs
+- Check the comprehensive documentation in `backend/` folder
+- Review the [API_KEYS_GUIDE.md](./API_KEYS_GUIDE.md)
+- Visit FastAPI docs: http://localhost:8000/docs
 - Check application logs for errors
 
 ## License
