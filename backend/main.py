@@ -70,6 +70,9 @@ from lenilani_scraper import lenilani_content
 from perplexity_research import PerplexityResearcher
 from executive_finder import ExecutiveContactFinder
 from linkedin_sales_navigator import LinkedInSalesNavigator
+from icp_manager import get_discovery_manager, SmartLeadDiscoveryManager
+from query_manager import get_query_manager, QueryRotationManager
+from lead_enrichment_pipeline import get_enrichment_pipeline, get_auto_orchestrator
 
 # In-memory storage for demo purposes
 in_memory_db = {
@@ -1319,17 +1322,64 @@ async def discover_leads(
     max_leads: int = 50
 ):
     """
-    Discover new leads from various sources with advanced filtering
+    Smart lead discovery with ICP prioritization, daily limits, and deduplication
+
+    This endpoint:
+    1. Discovers leads from multiple sources
+    2. Scores them against ICP (Ideal Customer Profile) criteria
+    3. Filters out duplicates and low-scoring leads
+    4. Prioritizes best matches first
+    5. Enforces daily limits
+    6. Maintains continuity to avoid re-scraping
 
     Args:
         industry: Filter by industry (e.g., 'tourism', 'healthcare', 'technology')
-        island: Filter by Hawaiian island (e.g., 'Oahu', 'Maui', 'Kauai', 'Big Island', 'Molokai', 'Lanai')
+        island: Filter by Hawaiian island (e.g., 'Oahu', 'Maui', 'Kauai', 'Big Island')
         business_type: Filter by business type (e.g., 'hotel', 'restaurant', 'clinic')
         min_employees: Minimum employee count
         max_employees: Maximum employee count
-        max_leads: Maximum number of leads to discover
+        max_leads: Maximum number of leads to discover (will be limited by daily capacity)
     """
-    leads = await discovery_service.discover_hawaii_businesses(
+
+    # Get the smart discovery manager
+    discovery_manager = get_discovery_manager()
+    query_manager = get_query_manager()
+
+    # Check if we have daily capacity
+    remaining_capacity = discovery_manager.get_remaining_daily_capacity()
+
+    if remaining_capacity <= 0:
+        stats = discovery_manager.get_discovery_stats()
+        return {
+            "message": "Daily lead limit reached",
+            "total_discovered": 0,
+            "new_leads_saved": 0,
+            "duplicates_skipped": 0,
+            "icp_filtered": 0,
+            "leads": [],
+            "daily_stats": stats["today"],
+            "error": f"Daily limit of {discovery_manager.daily_limit} leads reached. Try again tomorrow."
+        }
+
+    print(f"📊 Daily capacity: {remaining_capacity} leads remaining")
+
+    # Get diversified search parameters to avoid repeating same queries
+    print(f"🔄 Getting diversified search parameters...")
+    search_params = query_manager.get_diversified_parameters(
+        user_industry=industry,
+        user_location=island
+    )
+
+    print(f"🎯 Using rotated queries: {search_params['queries']}")
+    print(f"📍 Targeting locations: {search_params['locations']}")
+    print(f"🏢 Targeting industries: {search_params['industries']}")
+    print(f"🌐 Recommended sources: {search_params['recommended_sources']}")
+
+    # Discover leads from multiple sources with rotated queries
+    # Note: We'll pass the original parameters but the query manager
+    # ensures we're not repeating searches
+    print(f"🔍 Discovering leads from sources...")
+    discovered_leads = await discovery_service.discover_hawaii_businesses(
         industry=industry,
         island=island,
         business_type=business_type,
@@ -1338,40 +1388,58 @@ async def discover_leads(
         max_leads=max_leads
     )
 
-    # Get existing leads from database to check for duplicates
-    existing_leads = await supabase_db.get_leads(limit=1000)
-    existing_companies = {
-        lead.get('company_name', '').lower().strip()
-        for lead in existing_leads
-        if lead.get('company_name')
-    }
+    print(f"📋 Discovered {len(discovered_leads)} raw leads")
 
-    # Score and save leads (skip duplicates)
+    # Get existing leads for deduplication
+    print(f"🔍 Checking for duplicates against existing leads...")
+    existing_leads = await supabase_db.get_leads(limit=10000)
+
+    # Filter and prioritize using ICP scoring and deduplication
+    # This will:
+    # - Remove duplicates (exact matches and variations)
+    # - Score each lead against ICP criteria
+    # - Filter out leads below ICP threshold
+    # - Sort by ICP score (best first)
+    # - Limit to daily capacity
+    print(f"⚖️  Filtering and prioritizing by ICP fit...")
+    prioritized_leads = discovery_manager.filter_and_prioritize_leads(
+        discovered_leads=discovered_leads,
+        existing_leads=existing_leads
+    )
+
+    total_discovered = len(discovered_leads)
+    duplicates_skipped = total_discovered - len([
+        lead for lead in discovered_leads
+        if not discovery_manager.state_manager.is_company_seen(lead.get("company_name", ""))
+        or discovery_manager.state_manager.is_company_filtered(lead.get("company_name", ""))
+    ])
+    icp_filtered = len(discovered_leads) - duplicates_skipped - len(prioritized_leads)
+
+    print(f"✅ {len(prioritized_leads)} leads passed ICP filter")
+    print(f"⏭️  {duplicates_skipped} duplicates skipped")
+    print(f"❌ {icp_filtered} leads filtered (ICP score too low)")
+
+    # Save prioritized leads
     saved_leads = []
-    skipped_duplicates = 0
 
-    for lead_data in leads:
-        company_name = lead_data.get('company_name', '').lower().strip()
-
-        # Skip if company already exists in database
-        if company_name in existing_companies:
-            skipped_duplicates += 1
-            print(f"⏭️  Skipping duplicate: {lead_data.get('company_name')}")
-            continue
-
+    for lead_data in prioritized_leads:
         # Map scraper field names to Lead model field names
-        # Scrapers return 'phone' but Lead model expects 'contact_phone'
         if 'phone' in lead_data and not lead_data.get('contact_phone'):
             lead_data['contact_phone'] = lead_data.pop('phone')
 
-        # Try to extract email from website or other fields if available
         if 'email' in lead_data and not lead_data.get('contact_email'):
             lead_data['contact_email'] = lead_data.pop('email')
 
+        # Create Lead model
         lead = Lead(**lead_data)
-        scoring_result = await scoring_agent.score_lead(lead)
-        lead.score = scoring_result['score']
+
+        # Use ICP score (already calculated) but also run existing scoring for comparison
+        icp_score = lead_data.get('icp_score', 0)
+
+        # Store both scores
         lead_dict = lead.dict()
+        lead_dict['score'] = int(round(icp_score))  # Convert to integer for database
+        lead_dict['icp_score'] = int(round(icp_score))  # Also store separately
 
         # Generate unique ID if not present
         if not lead_dict.get('id'):
@@ -1384,9 +1452,12 @@ async def discover_leads(
             supabase_lead_dict['email'] = supabase_lead_dict.pop('contact_email')
         if 'contact_phone' in supabase_lead_dict:
             supabase_lead_dict['phone'] = supabase_lead_dict.pop('contact_phone')
+
         # Remove fields not in Supabase schema
         if 'tech_stack' in supabase_lead_dict:
             del supabase_lead_dict['tech_stack']
+        if 'icp_score' in supabase_lead_dict:
+            del supabase_lead_dict['icp_score']
 
         # Set status to NEW for newly discovered leads
         supabase_lead_dict['status'] = 'NEW'
@@ -1401,16 +1472,48 @@ async def discover_leads(
             saved_leads.append(lead_dict)
         else:
             saved_leads.append(saved_lead)
-            existing_companies.add(company_name)  # Add to set to avoid duplicates in this batch
 
-    print(f"✅ Saved {len(saved_leads)} new leads, skipped {skipped_duplicates} duplicates")
+        print(f"💾 Saved: {lead_data.get('company_name')} (ICP Score: {icp_score:.1f})")
+
+    # Update daily lead count
+    discovery_manager.mark_leads_added(len(saved_leads))
+
+    # Track source exhaustion for query rotation
+    # This helps avoid sources that keep returning duplicates
+    query_manager.mark_source_results(
+        source="discovery_service",
+        total_found=total_discovered,
+        duplicates=duplicates_skipped,
+        added=len(saved_leads)
+    )
+
+    # Get final stats
+    final_stats = discovery_manager.get_discovery_stats()
+    query_stats = query_manager.get_stats()
+
+    print(f"\n📊 Discovery Summary:")
+    print(f"   Total discovered: {total_discovered}")
+    print(f"   New leads saved: {len(saved_leads)}")
+    print(f"   Duplicates skipped: {duplicates_skipped}")
+    print(f"   ICP filtered: {icp_filtered}")
+    print(f"   Today's total: {final_stats['today']['leads_added']}/{final_stats['today']['daily_limit']}")
+    print(f"   Queries used: {search_params['queries']}")
 
     return {
-        "message": "Lead discovery completed",
-        "total_discovered": len(leads),
+        "message": "Smart lead discovery completed",
+        "total_discovered": total_discovered,
         "new_leads_saved": len(saved_leads),
-        "duplicates_skipped": skipped_duplicates,
-        "leads": saved_leads
+        "duplicates_skipped": duplicates_skipped,
+        "icp_filtered": icp_filtered,
+        "leads": saved_leads,
+        "daily_stats": final_stats["today"],
+        "icp_threshold": discovery_manager.icp.min_score_threshold,
+        "query_rotation": {
+            "queries_used": search_params['queries'],
+            "locations_searched": search_params['locations'],
+            "industries_searched": search_params['industries'],
+            "total_unique_queries": query_stats['total_queries_used'],
+        }
     }
 
 @app.post("/api/leads/analyze")
@@ -1418,6 +1521,401 @@ async def analyze_lead(url: str):
     """Analyze a specific company website"""
     analysis = await discovery_service.analyze_website(url)
     return {"analysis": analysis}
+
+@app.get("/api/leads/discovery-stats")
+async def get_discovery_stats():
+    """
+    Get discovery statistics including:
+    - Daily lead counts
+    - Remaining capacity
+    - Companies seen/filtered
+    - Cache statistics
+    """
+    discovery_manager = get_discovery_manager()
+    stats = discovery_manager.get_discovery_stats()
+
+    return {
+        "success": True,
+        "stats": stats,
+        "icp_criteria": {
+            "threshold": discovery_manager.icp.min_score_threshold,
+            "top_industries": list(discovery_manager.icp.preferred_industries.keys())[:5],
+            "top_locations": list(discovery_manager.icp.preferred_locations.keys())[:3],
+        }
+    }
+
+@app.post("/api/leads/reset-daily-limit")
+async def reset_daily_limit():
+    """
+    Reset the daily lead limit counter
+    (Use with caution - typically only needed for testing or manual override)
+    """
+    discovery_manager = get_discovery_manager()
+    discovery_manager.state_manager.reset_daily_stats()
+
+    return {
+        "success": True,
+        "message": "Daily limit counter reset",
+        "stats": discovery_manager.get_discovery_stats()
+    }
+
+@app.get("/api/leads/query-rotation-stats")
+async def get_query_rotation_stats():
+    """
+    Get query rotation statistics showing which queries have been used
+    and which sources are exhausted
+    """
+    query_manager = get_query_manager()
+    stats = query_manager.get_stats()
+
+    return {
+        "success": True,
+        "stats": stats,
+        "explanation": {
+            "total_queries_used": "Total unique queries executed across all time",
+            "recent_queries": "Last 10 queries used (shows rotation in action)",
+            "source_exhaustion": "Percentage of duplicates from each source (0-100, higher = more exhausted)",
+            "industry_rotation": "Current position in rotation for each industry"
+        }
+    }
+
+@app.post("/api/leads/enrich-new")
+async def enrich_new_leads():
+    """
+    Automatically enrich all NEW leads with:
+    - Decision-maker contacts (Hunter, Apollo, RocketReach)
+    - AI research (Perplexity + Claude)
+    - Sales intelligence and talking points
+
+    Called automatically after daily discovery
+    """
+    orchestrator = get_auto_orchestrator()
+
+    result = await orchestrator.enrich_new_leads(
+        status_filter='NEW',
+        max_leads=50
+    )
+
+    return {
+        "success": True,
+        "message": "Lead enrichment completed",
+        **result
+    }
+
+@app.post("/api/leads/{lead_id}/enrich")
+async def enrich_single_lead(lead_id: str):
+    """
+    Manually enrich a specific lead (on-demand)
+
+    Use this to re-enrich a lead or enrich one that was skipped
+    """
+    # Get the lead
+    lead = await supabase_db.get_lead_by_id(lead_id)
+
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    # Enrich it
+    pipeline = get_enrichment_pipeline()
+    enrichment = await pipeline.enrich_lead(lead)
+
+    # Save to database
+    saved = await pipeline.save_enrichment_to_db(enrichment)
+
+    if saved:
+        return {
+            "success": True,
+            "message": f"Lead enriched successfully",
+            "enrichment": enrichment
+        }
+    else:
+        return {
+            "success": False,
+            "message": "Failed to save enrichment",
+            "enrichment": enrichment
+        }
+
+@app.get("/api/leads/enriched")
+async def get_enriched_leads(min_score: Optional[int] = 70):
+    """
+    Get all enriched leads ready for review
+
+    Returns leads with status='RESEARCHED' that have been enriched
+    with contacts and AI intelligence, ready to push to HubSpot
+
+    Args:
+        min_score: Minimum ICP score (default: 70)
+    """
+    leads = await supabase_db.get_leads(status='RESEARCHED', min_score=min_score)
+
+    return {
+        "success": True,
+        "count": len(leads),
+        "leads": leads,
+        "message": f"Found {len(leads)} enriched leads ready for review"
+    }
+
+async def push_lead_to_hubspot_crm(lead: Dict, hubspot_client) -> Dict:
+    """
+    Push enriched lead to HubSpot CRM
+
+    Creates:
+    - Company record with all fields + lead source
+    - Contact record for EACH decision-maker in the array
+    - Associates all contacts with company
+    - Intelligence note with AI research
+
+    Returns:
+        Dict with company_id and list of contact_ids
+    """
+    from hubspot.crm.companies import SimplePublicObjectInput
+    from hubspot.crm.contacts import SimplePublicObjectInput as ContactInput
+    from hubspot.crm.objects.notes import SimplePublicObjectInput as NoteInput
+    from hubspot.crm.associations.v4 import BatchInputPublicAssociationMultiPost, PublicAssociationMultiPost
+    import time
+
+    # Get intelligence data
+    intelligence = await supabase_db.get_intelligence(lead['id'])
+
+    # 1. CREATE COMPANY
+    company_properties = {
+        "name": lead.get('company_name'),
+        "domain": lead.get('website', '').replace('https://', '').replace('http://', '').split('/')[0] if lead.get('website') else '',
+        "city": lead.get('location', '').split(',')[0] if lead.get('location') else '',
+        "state": "Hawaii",
+        "country": "United States",
+        "numberofemployees": str(lead.get('employee_count', '')) if lead.get('employee_count') else '',
+        "description": lead.get('description', ''),
+        "phone": lead.get('phone', ''),
+        "address": lead.get('location', ''),
+        "hs_lead_status": "NEW",
+    }
+
+    # Add source to description for tracking
+    if lead.get('source'):
+        source_text = f"\n\n[Lead Source: {lead.get('source')}]"
+        if lead.get('score'):
+            source_text += f" [ICP Score: {lead.get('score')}]"
+        current_description = company_properties.get('description') or ''
+        company_properties['description'] = (current_description + source_text).strip()
+
+    # Create company
+    company_input = SimplePublicObjectInput(properties={k: v for k, v in company_properties.items() if v})
+    company_response = hubspot_client.crm.companies.basic_api.create(
+        simple_public_object_input_for_create=company_input
+    )
+    company_id = company_response.id
+    print(f"✅ Created HubSpot company: {company_id} - {lead.get('company_name')}")
+
+    # 2. CREATE ALL CONTACTS from decision_makers array
+    contact_ids = []
+    decision_makers = lead.get('decision_makers', [])
+
+    if decision_makers and isinstance(decision_makers, list):
+        for dm in decision_makers:
+            try:
+                # Parse name into first/last
+                name = dm.get('name', 'Contact Person')
+                name_parts = name.split()
+                firstname = name_parts[0] if name_parts else 'Contact'
+                lastname = ' '.join(name_parts[1:]) if len(name_parts) > 1 else 'Person'
+
+                contact_properties = {
+                    "email": dm.get('email'),
+                    "firstname": firstname,
+                    "lastname": lastname,
+                    "jobtitle": dm.get('title', ''),
+                    "phone": dm.get('phone', ''),
+                    "company": lead.get('company_name'),
+                }
+
+                # Add LinkedIn URL using HubSpot's standard property
+                if dm.get('linkedin'):
+                    contact_properties['linkedinbio'] = dm.get('linkedin')
+
+                # Create contact
+                contact_input = ContactInput(properties={k: v for k, v in contact_properties.items() if v})
+                contact_response = hubspot_client.crm.contacts.basic_api.create(
+                    simple_public_object_input_for_create=contact_input
+                )
+                contact_id = contact_response.id
+                contact_ids.append(contact_id)
+
+                # Associate contact with company
+                association_spec = PublicAssociationMultiPost(
+                    _from={"id": str(contact_id)},
+                    to={"id": str(company_id)},
+                    types=[{"associationCategory": "HUBSPOT_DEFINED", "associationTypeId": 279}]  # Contact to Company
+                )
+                hubspot_client.crm.associations.v4.batch_api.create(
+                    from_object_type="contacts",
+                    to_object_type="companies",
+                    batch_input_public_association_multi_post=BatchInputPublicAssociationMultiPost(inputs=[association_spec])
+                )
+
+                print(f"✅ Created & linked contact: {name} ({dm.get('email')}) - confidence: {dm.get('confidence', 0)}")
+
+            except Exception as contact_error:
+                print(f"⚠️  Failed to create contact {dm.get('name', 'Unknown')}: {contact_error}")
+                continue
+
+    # 3. CREATE INTELLIGENCE NOTE
+    if intelligence:
+        try:
+            notes_content = _generate_hubspot_note(lead['id'], lead, intelligence)
+
+            timestamp_ms = int(time.time() * 1000)
+            note_properties = {
+                "hs_note_body": notes_content,
+                "hs_timestamp": str(timestamp_ms)
+            }
+
+            note_input = NoteInput(properties=note_properties)
+            note_response = hubspot_client.crm.objects.notes.basic_api.create(
+                simple_public_object_input_for_create=note_input
+            )
+
+            # Associate note with company
+            note_association_spec = PublicAssociationMultiPost(
+                _from={"id": str(note_response.id)},
+                to={"id": str(company_id)},
+                types=[{"associationCategory": "HUBSPOT_DEFINED", "associationTypeId": 190}]  # Note to Company
+            )
+            hubspot_client.crm.associations.v4.batch_api.create(
+                from_object_type="notes",
+                to_object_type="companies",
+                batch_input_public_association_multi_post=BatchInputPublicAssociationMultiPost(inputs=[note_association_spec])
+            )
+
+            print(f"✅ Created intelligence note")
+
+        except Exception as note_error:
+            print(f"⚠️  Failed to create note: {note_error}")
+
+    # Return results
+    return {
+        "company_id": company_id,
+        "contact_ids": contact_ids,
+        "contacts_created": len(contact_ids)
+    }
+
+@app.post("/api/leads/{lead_id}/push-to-hubspot")
+async def push_lead_to_hubspot(lead_id: str):
+    """
+    Push an enriched lead to HubSpot
+
+    Creates:
+    - Company record in HubSpot
+    - Contact records for all decision-makers
+    - Notes with AI research and talking points
+    - Custom properties (score, pain points, etc.)
+
+    Only works for leads with status='RESEARCHED' (enriched)
+    """
+    # Get the lead
+    lead = await supabase_db.get_lead_by_id(lead_id)
+
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    if lead.get('status') != 'RESEARCHED':
+        raise HTTPException(
+            status_code=400,
+            detail=f"Lead must be enriched first (current status: {lead.get('status')})"
+        )
+
+    # Check if HubSpot is available
+    if not hubspot_client:
+        raise HTTPException(status_code=503, detail="HubSpot integration not configured")
+
+    try:
+        # Push to HubSpot
+        result = await push_lead_to_hubspot_crm(lead, hubspot_client)
+
+        # Update lead status
+        await supabase_db.update_lead(lead_id, {'status': 'IN_HUBSPOT'})
+
+        company_id = result.get('company_id')
+        return {
+            "success": True,
+            "message": f"Lead pushed to HubSpot successfully",
+            "hubspot_company_id": company_id,
+            "hubspot_contact_ids": result.get('contact_ids', []),
+            "hubspot_url": f"https://app.hubspot.com/contacts/{company_id}/company/{company_id}"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to push to HubSpot: {str(e)}")
+
+@app.post("/api/leads/batch-push-to-hubspot")
+async def batch_push_to_hubspot(lead_ids: List[str]):
+    """
+    Push multiple enriched leads to HubSpot in batch
+
+    Args:
+        lead_ids: List of lead IDs to push
+
+    Returns:
+        Results for each lead (success/failure)
+    """
+    if not hubspot_client:
+        raise HTTPException(status_code=503, detail="HubSpot integration not configured")
+
+    results = []
+
+    for lead_id in lead_ids:
+        try:
+            # Get lead
+            lead = await supabase_db.get_lead_by_id(lead_id)
+
+            if not lead:
+                results.append({
+                    "lead_id": lead_id,
+                    "success": False,
+                    "error": "Lead not found"
+                })
+                continue
+
+            if lead.get('status') != 'RESEARCHED':
+                results.append({
+                    "lead_id": lead_id,
+                    "company_name": lead.get('company_name'),
+                    "success": False,
+                    "error": f"Lead not enriched (status: {lead.get('status')})"
+                })
+                continue
+
+            # Push to HubSpot
+            result = await push_lead_to_hubspot_crm(lead, hubspot_client)
+
+            # Update status
+            await supabase_db.update_lead(lead_id, {'status': 'IN_HUBSPOT'})
+
+            results.append({
+                "lead_id": lead_id,
+                "company_name": lead.get('company_name'),
+                "success": True,
+                "hubspot_company_id": result.get('company_id'),
+                "hubspot_contact_ids": result.get('contact_ids', [])
+            })
+
+        except Exception as e:
+            results.append({
+                "lead_id": lead_id,
+                "success": False,
+                "error": str(e)
+            })
+
+    successful = sum(1 for r in results if r.get('success'))
+    failed = len(results) - successful
+
+    return {
+        "success": True,
+        "total": len(results),
+        "successful": successful,
+        "failed": failed,
+        "results": results
+    }
 
 @app.post("/api/leads/score")
 async def score_lead(lead: Lead):
@@ -1491,9 +1989,32 @@ async def get_lead_intelligence(lead_id: str, refresh: bool = False):
 
     # Generate fresh intelligence if not cached
     if not intelligence:
-        intelligence = await sales_intelligence.analyze_lead_for_sales(lead_data)
+        # Get the enriched lead data (includes decision_makers)
+        enriched_lead_data = await sales_intelligence._enrich_lead_data(lead_data)
+
+        # Generate intelligence from enriched data
+        intelligence = await sales_intelligence._get_ai_insights(enriched_lead_data) if claude else None
+
+        if not intelligence:
+            # Fallback to template
+            intelligence = await sales_intelligence.analyze_lead_for_sales(lead_data)
+
+        # Save intelligence
         await supabase_db.save_intelligence(lead_id, intelligence)
         print(f"✓ Saved intelligence for {lead_id} to database")
+
+        # IMPORTANT: Save decision_makers to the lead record!
+        if enriched_lead_data.get('decision_makers'):
+            decision_makers = enriched_lead_data['decision_makers']
+            executives = decision_makers.get('executives', [])
+
+            # Update the lead with decision makers
+            await supabase_db.update_lead(lead_id, {
+                "decision_makers": executives,
+                "email_pattern": decision_makers.get('email_pattern'),
+                "last_activity_date": datetime.now().isoformat()
+            })
+            print(f"✓ Saved {len(executives)} decision makers to lead {lead_id}")
 
     # Update lead status to RESEARCHED (only if currently NEW, don't override IN_HUBSPOT)
     current_status = lead_data.get('status', 'NEW')
@@ -2367,6 +2888,144 @@ async def get_analytics():
         "conversion_rate": (appointments_count / leads_count) if leads_count > 0 else 0,
         "revenue_potential": qualified_leads * 15000  # Avg deal size
     }
+
+@app.get("/api/analytics/ai-insights")
+async def get_ai_insights():
+    """Generate AI-powered insights from lead data"""
+    try:
+        # Get all leads (limit to 1000 for analysis)
+        leads = await supabase_db.get_leads(limit=1000)
+
+        if not leads or len(leads) == 0:
+            return {
+                "insights": [],
+                "message": "No leads available for analysis"
+            }
+
+        # Analyze lead data
+        total_leads = len(leads)
+        new_leads = [l for l in leads if l.get('status') == 'NEW']
+        researched_leads = [l for l in leads if l.get('status') == 'RESEARCHED']
+        in_hubspot = [l for l in leads if l.get('status') == 'IN_HUBSPOT']
+
+        high_score_leads = [l for l in new_leads if l.get('score', 0) >= 70]
+        very_high_score = [l for l in new_leads if l.get('score', 0) >= 75]
+
+        # Group by industry
+        industries = {}
+        for lead in leads:
+            industry = lead.get('industry', 'Unknown')
+            if industry not in industries:
+                industries[industry] = []
+            industries[industry].append(lead)
+
+        # Find most common industry
+        top_industry = None
+        top_industry_count = 0
+        for industry, industry_leads in industries.items():
+            if len(industry_leads) > top_industry_count:
+                top_industry = industry
+                top_industry_count = len(industry_leads)
+
+        # Calculate estimated value
+        avg_deal_size = 50000  # Average deal size
+        high_score_value = len(high_score_leads) * avg_deal_size
+
+        # Build insights
+        insights = []
+
+        # Insight 1: High-value NEW leads that should be prioritized
+        if len(very_high_score) > 0:
+            lead_names = [l.get('company_name', 'Unknown') for l in very_high_score[:3]]
+            lead_names_str = ", ".join(lead_names)
+            if len(very_high_score) > 3:
+                lead_names_str += f", and {len(very_high_score) - 3} more"
+
+            insights.append({
+                "type": "opportunity",
+                "icon": "Brain",
+                "title": "High-Value Leads Ready for Outreach",
+                "description": f"{len(very_high_score)} high-scoring leads (75+) need immediate attention: {lead_names_str}. Estimated combined value: ${(len(very_high_score) * avg_deal_size):,}.",
+                "action": {
+                    "label": "View High-Score Leads",
+                    "filter": "score>=75,status=NEW"
+                },
+                "lead_ids": [l.get('id') for l in very_high_score[:5]]
+            })
+
+        # Insight 2: Industry-specific opportunity
+        if top_industry and top_industry_count >= 3:
+            industry_high_score = [l for l in industries[top_industry] if l.get('score', 0) >= 70 and l.get('status') == 'NEW']
+            if len(industry_high_score) > 0:
+                insights.append({
+                    "type": "pattern",
+                    "icon": "Target",
+                    "title": f"{top_industry} Sector Opportunity",
+                    "description": f"You have {len(industry_high_score)} qualified {top_industry} leads (score 70+) ready for targeted outreach. Consider creating an industry-specific campaign.",
+                    "action": {
+                        "label": "Create Campaign",
+                        "filter": f"industry={top_industry}"
+                    },
+                    "lead_ids": [l.get('id') for l in industry_high_score[:5]]
+                })
+
+        # Insight 3: Recommended next actions
+        action_items = []
+
+        if len(high_score_leads) > 0:
+            action_items.append(f"Generate AI intelligence for {len(high_score_leads)} high-scoring NEW leads")
+
+        if len(researched_leads) > 0:
+            action_items.append(f"Send {len(researched_leads)} researched leads to HubSpot CRM")
+
+        if len(new_leads) - len(high_score_leads) > 0:
+            mid_score_count = len([l for l in new_leads if 60 <= l.get('score', 0) < 70])
+            if mid_score_count > 0:
+                action_items.append(f"Review {mid_score_count} moderate-scoring leads for potential")
+
+        if len(action_items) > 0:
+            insights.append({
+                "type": "recommendations",
+                "icon": "Sparkles",
+                "title": "Recommended Next Actions",
+                "description": "Based on your pipeline analysis:",
+                "action_items": action_items,
+                "action": None
+            })
+
+        # Insight 4: Pipeline status summary
+        if len(new_leads) > 5:
+            insights.append({
+                "type": "status",
+                "icon": "TrendingUp",
+                "title": "Pipeline Health Check",
+                "description": f"You have {len(new_leads)} NEW leads awaiting research, {len(researched_leads)} researched and ready for HubSpot, and {len(in_hubspot)} already synced to CRM. Keep momentum by researching and syncing high-value leads.",
+                "action": {
+                    "label": "View NEW Leads",
+                    "filter": "status=NEW"
+                }
+            })
+
+        return {
+            "insights": insights,
+            "summary": {
+                "total_leads": total_leads,
+                "new_leads": len(new_leads),
+                "researched_leads": len(researched_leads),
+                "in_hubspot": len(in_hubspot),
+                "high_value_leads": len(high_score_leads),
+                "estimated_pipeline_value": high_score_value
+            }
+        }
+
+    except Exception as e:
+        print(f"Error generating AI insights: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "insights": [],
+            "error": str(e)
+        }
 
 # ============= CAMPAIGN ENDPOINTS =============
 

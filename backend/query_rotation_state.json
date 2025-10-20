@@ -1,0 +1,35 @@
+{
+  "queries_used": [
+    {
+      "query": "Honolulu hotel",
+      "used_at": "2025-10-19T12:30:34.233794"
+    },
+    {
+      "query": "Oahu hotel",
+      "used_at": "2025-10-19T12:30:34.233798"
+    },
+    {
+      "query": "Honolulu tour operator",
+      "used_at": "2025-10-19T12:30:34.233799"
+    },
+    {
+      "query": "Oahu tour operator",
+      "used_at": "2025-10-19T12:30:34.233800"
+    },
+    {
+      "query": "Honolulu restaurant",
+      "used_at": "2025-10-19T12:30:34.233801"
+    }
+  ],
+  "last_rotation": null,
+  "source_exhaustion": {
+    "discovery_service": 4.0,
+    "discovery_service_last_check": "2025-10-19T12:32:28.023506"
+  },
+  "industry_rotation": {
+    "hospitality": 1,
+    "tourism": 1,
+    "restaurant": 1
+  },
+  "location_rotation": {}
+}

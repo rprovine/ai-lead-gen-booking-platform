@@ -19,12 +19,23 @@ import {
   Sparkles,
   Phone,
   Download,
-  Loader2
+  Loader2,
+  Upload
 } from 'lucide-react'
 import axios from 'axios'
 import { motion } from 'framer-motion'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+interface DecisionMaker {
+  name: string
+  title: string
+  email: string
+  phone?: string
+  linkedin?: string
+  confidence?: number
+  source?: string
+}
 
 interface Lead {
   id?: string
@@ -41,6 +52,8 @@ interface Lead {
   status: string
   source: string
   created_at: string
+  decision_makers?: DecisionMaker[]
+  email_pattern?: string
 }
 
 interface Analytics {
@@ -185,6 +198,12 @@ export default function Dashboard() {
   // PDF download states
   const [downloadingPlaybook, setDownloadingPlaybook] = useState<string | null>(null)
 
+  // HubSpot sync states
+  const [sendingToHubSpot, setSendingToHubSpot] = useState<string | null>(null)
+
+  // Status filter state
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'NEW' | 'RESEARCHED' | 'IN_HUBSPOT'>('ALL')
+
   // Campaign states
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [showCreateCampaign, setShowCreateCampaign] = useState(false)
@@ -212,11 +231,16 @@ export default function Dashboard() {
   const [appointmentNotes, setAppointmentNotes] = useState('')
   const [bookingAppointment, setBookingAppointment] = useState(false)
 
+  // AI Insights states
+  const [aiInsights, setAiInsights] = useState<any[]>([])
+  const [loadingInsights, setLoadingInsights] = useState(false)
+
   useEffect(() => {
     fetchAnalytics()
     fetchLeads()
     fetchCampaigns()
     fetchAppointments()
+    fetchAIInsights()
   }, [])
 
   const fetchAnalytics = async () => {
@@ -480,6 +504,18 @@ export default function Dashboard() {
     }
   }
 
+  const fetchAIInsights = async () => {
+    setLoadingInsights(true)
+    try {
+      const response = await axios.get(`${API_URL}/api/analytics/ai-insights`)
+      setAiInsights(response.data.insights || [])
+    } catch (error) {
+      console.error('Error fetching AI insights:', error)
+    } finally {
+      setLoadingInsights(false)
+    }
+  }
+
   const openBookingModal = (lead: Lead) => {
     setBookingLead(lead)
     setAppointmentDate('')
@@ -517,6 +553,32 @@ export default function Dashboard() {
       alert('Error booking appointment. Please try again.')
     } finally {
       setBookingAppointment(false)
+    }
+  }
+
+  const sendToHubSpot = async (lead: Lead) => {
+    setSendingToHubSpot(lead.id || '')
+    try {
+      const response = await axios.post(`${API_URL}/api/leads/${lead.id}/push-to-hubspot`)
+
+      if (response.data.success) {
+        const contactCount = response.data.hubspot_contact_ids?.length || 0
+        alert(`✅ Successfully sent ${lead.company_name} to HubSpot!\n\nCompany ID: ${response.data.hubspot_company_id}\nContacts Created: ${contactCount}\n\nClick OK to view in HubSpot.`)
+
+        // Open HubSpot in new tab
+        if (response.data.hubspot_url) {
+          window.open(response.data.hubspot_url, '_blank')
+        }
+
+        // Refresh leads to get updated status
+        fetchLeads()
+      }
+    } catch (error: any) {
+      console.error('Error sending to HubSpot:', error)
+      const errorMessage = error.response?.data?.detail || 'Error sending lead to HubSpot. Please make sure HubSpot integration is configured.'
+      alert(errorMessage)
+    } finally {
+      setSendingToHubSpot(null)
     }
   }
 
@@ -1498,6 +1560,50 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Status Filter Tabs */}
+                <div className="mb-6 flex gap-2 border-b">
+                  <button
+                    onClick={() => setStatusFilter('ALL')}
+                    className={`px-4 py-2 border-b-2 transition-colors ${
+                      statusFilter === 'ALL'
+                        ? 'border-blue-600 text-blue-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    All ({leads.length})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('NEW')}
+                    className={`px-4 py-2 border-b-2 transition-colors ${
+                      statusFilter === 'NEW'
+                        ? 'border-blue-600 text-blue-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    New ({leads.filter(l => l.status === 'NEW').length})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('RESEARCHED')}
+                    className={`px-4 py-2 border-b-2 transition-colors ${
+                      statusFilter === 'RESEARCHED'
+                        ? 'border-blue-600 text-blue-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Researched ({leads.filter(l => l.status === 'RESEARCHED').length})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('IN_HUBSPOT')}
+                    className={`px-4 py-2 border-b-2 transition-colors ${
+                      statusFilter === 'IN_HUBSPOT'
+                        ? 'border-blue-600 text-blue-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    In HubSpot ({leads.filter(l => l.status === 'IN_HUBSPOT').length})
+                  </button>
+                </div>
+
                 <div className="space-y-4">
                   {leads.length === 0 ? (
                     <div className="text-center py-12">
@@ -1507,7 +1613,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                   ) : (
-                    leads.map((lead, index) => (
+                    leads.filter(lead => statusFilter === 'ALL' || lead.status === statusFilter).map((lead, index) => (
                       <motion.div
                         key={lead.id || index}
                         initial={{ opacity: 0, x: -20 }}
@@ -1523,6 +1629,17 @@ export default function Dashboard() {
                                 Score: {lead.score.toFixed(0)}
                               </Badge>
                               <Badge variant="outline">{lead.industry}</Badge>
+                              <Badge
+                                className={
+                                  lead.status === 'IN_HUBSPOT'
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                                    : lead.status === 'RESEARCHED'
+                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'
+                                }
+                              >
+                                {lead.status === 'IN_HUBSPOT' ? 'In HubSpot' : lead.status === 'RESEARCHED' ? 'Researched' : 'New'}
+                              </Badge>
                             </div>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                               {lead.location} {lead.employee_count && `• ${lead.employee_count} employees`}
@@ -1557,6 +1674,57 @@ export default function Dashboard() {
                                     ✉️ {lead.email}
                                   </a>
                                 )}
+                              </div>
+                            )}
+                            {/* Decision Makers */}
+                            {lead.decision_makers && lead.decision_makers.length > 0 && (
+                              <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  Decision Makers ({lead.decision_makers.length})
+                                </p>
+                                <div className="space-y-2">
+                                  {lead.decision_makers.slice(0, 3).map((dm, i) => (
+                                    <div key={i} className="text-xs bg-white dark:bg-gray-800 p-2 rounded border border-blue-100 dark:border-blue-900">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1">
+                                          <p className="font-semibold text-gray-900 dark:text-gray-100">{dm.name}</p>
+                                          <p className="text-gray-600 dark:text-gray-400">{dm.title}</p>
+                                        </div>
+                                        {dm.confidence && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {Math.round(dm.confidence * 100)}%
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="mt-1 flex flex-col gap-1">
+                                        {dm.email && (
+                                          <a href={`mailto:${dm.email}`} className="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                            ✉️ {dm.email}
+                                          </a>
+                                        )}
+                                        {dm.phone && (
+                                          <a href={`tel:${dm.phone}`} className="text-green-600 hover:text-green-800 flex items-center gap-1">
+                                            📞 {dm.phone}
+                                          </a>
+                                        )}
+                                        {dm.linkedin && (
+                                          <a href={dm.linkedin} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 flex items-center gap-1">
+                                            🔗 LinkedIn
+                                          </a>
+                                        )}
+                                      </div>
+                                      {dm.source && (
+                                        <p className="text-xs text-gray-400 mt-1">via {dm.source}</p>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {lead.decision_makers.length > 3 && (
+                                    <p className="text-xs text-gray-500 text-center pt-1">
+                                      +{lead.decision_makers.length - 3} more
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1609,6 +1777,38 @@ export default function Dashboard() {
                           >
                             <Calendar className="mr-2 h-4 w-4" />
                             Book
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => sendToHubSpot(lead)}
+                            className={
+                              lead.status === 'IN_HUBSPOT'
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-orange-600 to-red-600'
+                            }
+                            disabled={sendingToHubSpot === lead.id || lead.status === 'IN_HUBSPOT'}
+                            title={
+                              lead.status === 'IN_HUBSPOT'
+                                ? 'Already in HubSpot'
+                                : 'Send to HubSpot CRM'
+                            }
+                          >
+                            {sendingToHubSpot === lead.id ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Sending...
+                              </>
+                            ) : lead.status === 'IN_HUBSPOT' ? (
+                              <>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Already in HubSpot
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="mr-2 h-4 w-4" />
+                                HubSpot
+                              </>
+                            )}
                           </Button>
                         </div>
                       </motion.div>
@@ -1838,57 +2038,73 @@ export default function Dashboard() {
           <TabsContent value="ai-insights">
             <Card>
               <CardHeader>
-                <CardTitle>AI-Powered Insights</CardTitle>
-                <CardDescription>LangChain analysis and recommendations</CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>AI-Powered Insights</CardTitle>
+                    <CardDescription>Real-time analysis and recommendations from your lead data</CardDescription>
+                  </div>
+                  <Button onClick={fetchAIInsights} size="sm" variant="outline">
+                    <Brain className="mr-2 h-4 w-4" />
+                    Refresh Insights
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <Brain className="h-6 w-6 text-blue-600 mt-1 flex-shrink-0" />
-                      <div>
-                        <h3 className="font-semibold">High Opportunity Detected</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          5 tourism companies in Waikiki showing outdated booking systems.
-                          High potential for AI chatbot integration with estimated deal value of $75k-$150k.
-                        </p>
-                        <Button size="sm" className="mt-3">
-                          Create Targeted Campaign
-                        </Button>
-                      </div>
-                    </div>
+                {loadingInsights ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Brain className="h-16 w-16 text-blue-600 animate-pulse mb-4" />
+                    <p className="text-lg font-semibold">Analyzing your lead pipeline...</p>
                   </div>
-
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <Target className="h-6 w-6 text-green-600 mt-1 flex-shrink-0" />
-                      <div>
-                        <h3 className="font-semibold">Ideal Customer Profile Match</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          3 new leads match your ideal customer profile: Healthcare sector, 50-250 employees,
-                          Oahu-based, with identified digital transformation needs.
-                        </p>
-                        <Button size="sm" className="mt-3" variant="outline">
-                          View Matches
-                        </Button>
-                      </div>
-                    </div>
+                ) : aiInsights.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Brain className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400">
+                      No insights available. Add more leads to get AI-powered recommendations.
+                    </p>
                   </div>
-
-                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <Sparkles className="h-6 w-6 text-purple-600 mt-1 flex-shrink-0" />
-                      <div>
-                        <h3 className="font-semibold">Recommended Next Actions</h3>
-                        <ul className="text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1 list-disc list-inside">
-                          <li>Follow up with 3 high-score leads who haven't responded</li>
-                          <li>Schedule in-person meetings with 2 qualified prospects</li>
-                          <li>Create case study for tourism sector to improve conversion</li>
-                        </ul>
+                ) : (
+                  <div className="space-y-4">
+                    {aiInsights.map((insight, index) => (
+                      <div
+                        key={index}
+                        className={`p-4 rounded-lg ${
+                          insight.type === 'opportunity' ? 'bg-blue-50 dark:bg-blue-900/20' :
+                          insight.type === 'pattern' ? 'bg-green-50 dark:bg-green-900/20' :
+                          insight.type === 'recommendations' ? 'bg-purple-50 dark:bg-purple-900/20' :
+                          'bg-orange-50 dark:bg-orange-900/20'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {insight.icon === 'Brain' && <Brain className="h-6 w-6 text-blue-600 mt-1 flex-shrink-0" />}
+                          {insight.icon === 'Target' && <Target className="h-6 w-6 text-green-600 mt-1 flex-shrink-0" />}
+                          {insight.icon === 'Sparkles' && <Sparkles className="h-6 w-6 text-purple-600 mt-1 flex-shrink-0" />}
+                          {insight.icon === 'TrendingUp' && <TrendingUp className="h-6 w-6 text-orange-600 mt-1 flex-shrink-0" />}
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{insight.title}</h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {insight.description}
+                            </p>
+                            {insight.action_items && (
+                              <ul className="text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1 list-disc list-inside">
+                                {insight.action_items.map((item: string, i: number) => (
+                                  <li key={i}>{item}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {insight.action && (
+                              <Button size="sm" className="mt-3" onClick={() => {
+                                // You could implement filtering here in the future
+                                console.log('Filter:', insight.action.filter)
+                              }}>
+                                {insight.action.label}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

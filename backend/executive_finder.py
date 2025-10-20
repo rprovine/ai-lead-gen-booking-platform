@@ -25,6 +25,9 @@ class ExecutiveContactFinder:
         self.hunter_api_key = os.getenv('HUNTER_API_KEY')
         self.apollo_api_key = os.getenv('APOLLO_API_KEY')
         self.rocketreach_api_key = os.getenv('ROCKETREACH_API_KEY')
+        self.perplexity_api_key = os.getenv('PERPLEXITY_API_KEY')
+        self.google_api_key = os.getenv('GOOGLE_API_KEY')
+        self.google_cse_id = os.getenv('GOOGLE_CSE_ID')
 
     async def find_decision_makers(
         self,
@@ -77,12 +80,24 @@ class ExecutiveContactFinder:
             if rocketreach_data:
                 result['executives'].extend(rocketreach_data)
 
-        # 4. Scrape company website for team/about pages
+        # 4. Use Perplexity AI to find decision makers (especially good for small businesses)
+        if self.perplexity_api_key and len(result['executives']) < 3:
+            perplexity_data = await self._search_perplexity_contacts(company_name, website)
+            if perplexity_data:
+                result['executives'].extend(perplexity_data)
+
+        # 5. Use Google Search to find owner/CEO information
+        if self.google_api_key and len(result['executives']) < 3:
+            google_data = await self._search_google_contacts(company_name, website)
+            if google_data:
+                result['executives'].extend(google_data)
+
+        # 6. Scrape company website for team/about pages
         if website:
             website_executives = await self._scrape_team_page(website)
             result['executives'].extend(website_executives)
 
-        # 5. Generate email guesses using common patterns
+        # 7. Generate email guesses using common patterns
         if result['company_domain'] and result['executives']:
             result['executives'] = self._enhance_with_email_guesses(
                 result['executives'],
@@ -292,6 +307,185 @@ class ExecutiveContactFinder:
 
         except Exception as e:
             print(f"RocketReach error: {e}")
+
+        return []
+
+    async def _search_perplexity_contacts(self, company_name: str, website: str) -> List[Dict]:
+        """
+        Use Perplexity AI to find decision makers and contact information
+        Especially effective for small businesses not in traditional databases
+        """
+        if not self.perplexity_api_key:
+            return []
+
+        print(f"🔍 Perplexity AI: Searching for decision makers at {company_name}...")
+
+        try:
+            # Craft a specific prompt to find owner/CEO contact info
+            prompt = f"""Find the owner, CEO, or key decision makers for {company_name} (website: {website}).
+
+Please provide:
+1. Full name of the owner/CEO/president
+2. Their job title
+3. Email address (if publicly available)
+4. Phone number (if publicly available)
+5. LinkedIn profile URL (if available)
+
+Focus on publicly available contact information from:
+- Company website
+- LinkedIn
+- Business directories
+- Press releases
+- News articles
+- Professional profiles
+
+Format your response as a JSON array of decision makers:
+[
+  {{
+    "name": "Full Name",
+    "title": "CEO/Owner/President",
+    "email": "email@company.com",
+    "phone": "+1-808-555-1234",
+    "linkedin": "https://linkedin.com/in/profile"
+  }}
+]
+
+Only include real, verified information. If you can't find a piece of information, omit that field."""
+
+            url = "https://api.perplexity.ai/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.perplexity_api_key}",
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "model": "sonar-pro",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a business research assistant. Provide accurate, publicly available contact information in JSON format."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": 0.1,
+                "max_tokens": 1000
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers=headers, json=payload) as response:
+                    if response.status == 200:
+                        data = await response.json()
+
+                        # Extract the response text
+                        response_text = data.get('choices', [{}])[0].get('message', {}).get('content', '')
+
+                        # Try to parse JSON from the response
+                        try:
+                            # Look for JSON array in the response
+                            import re
+                            json_match = re.search(r'\[[\s\S]*?\]', response_text)
+                            if json_match:
+                                contacts = json.loads(json_match.group())
+
+                                # Convert to our format
+                                executives = []
+                                for contact in contacts:
+                                    if contact.get('name'):
+                                        exec_data = {
+                                            'name': contact.get('name'),
+                                            'title': contact.get('title', 'Owner'),
+                                            'email': contact.get('email'),
+                                            'phone': contact.get('phone'),
+                                            'linkedin': contact.get('linkedin'),
+                                            'confidence': 0.7,  # Medium-high confidence from Perplexity
+                                            'source': 'perplexity.ai'
+                                        }
+                                        executives.append(exec_data)
+                                        print(f"   Found: {exec_data['name']} - {exec_data['title']}")
+
+                                print(f"✓ Perplexity AI: Found {len(executives)} decision makers for {company_name}")
+                                return executives
+                        except json.JSONDecodeError:
+                            print(f"   ⚠️  Could not parse JSON from Perplexity response")
+                            print(f"   Raw response: {response_text[:200]}...")
+                    else:
+                        error_text = await response.text()
+                        print(f"   ❌ Perplexity API error: {response.status}")
+                        print(f"   Error response: {error_text[:500]}")
+
+        except Exception as e:
+            print(f"❌ Perplexity error: {e}")
+
+        return []
+
+    async def _search_google_contacts(self, company_name: str, website: str) -> List[Dict]:
+        """
+        Use Google Custom Search to find owner/CEO information
+        """
+        if not self.google_api_key or not self.google_cse_id:
+            return []
+
+        print(f"🔍 Google Search: Searching for decision makers at {company_name}...")
+
+        try:
+            # Search for owner/CEO information
+            search_queries = [
+                f"{company_name} owner contact",
+                f"{company_name} CEO email",
+                f"{company_name} president Hawaii"
+            ]
+
+            executives = []
+
+            for query in search_queries:
+                url = "https://www.googleapis.com/customsearch/v1"
+                params = {
+                    'key': self.google_api_key,
+                    'cx': self.google_cse_id,
+                    'q': query,
+                    'num': 3
+                }
+
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, params=params) as response:
+                        if response.status == 200:
+                            data = await response.json()
+
+                            # Analyze search results for contact information
+                            for item in data.get('items', []):
+                                snippet = item.get('snippet', '')
+                                title = item.get('title', '')
+
+                                # Extract emails from snippets
+                                emails = self._extract_emails_from_html(snippet + " " + title)
+
+                                for email in emails:
+                                    if not any(skip in email.lower() for skip in ['info@', 'support@', 'contact@']):
+                                        # Try to extract name from context
+                                        name_match = re.search(r'([A-Z][a-z]+\s[A-Z][a-z]+)[\s,]+(CEO|Owner|President|Founder)', snippet + " " + title)
+                                        name = name_match.group(1) if name_match else None
+                                        title_match = name_match.group(2) if name_match else 'Owner'
+
+                                        executives.append({
+                                            'name': name,
+                                            'title': title_match,
+                                            'email': email,
+                                            'phone': None,
+                                            'linkedin': None,
+                                            'confidence': 0.5,  # Lower confidence from Google search
+                                            'source': 'google_search'
+                                        })
+
+            if executives:
+                print(f"✓ Google Search: Found {len(executives)} potential contacts for {company_name}")
+
+            return executives[:3]  # Limit to top 3 results
+
+        except Exception as e:
+            print(f"❌ Google Search error: {e}")
 
         return []
 

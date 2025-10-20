@@ -41,13 +41,23 @@ class SupabaseDB:
             print(f"Error creating lead: {e}")
             return None
 
-    async def get_leads(self, limit: int = 100) -> List[Dict]:
-        """Get all leads"""
+    async def get_leads(self, limit: int = 100, status: str = None, min_score: int = None) -> List[Dict]:
+        """Get all leads, optionally filtered by status and min_score"""
         if not self.client:
             return []
 
         try:
-            response = self.client.table('leads').select('*').order('created_at', desc=True).limit(limit).execute()
+            query = self.client.table('leads').select('*')
+
+            # Filter by status if provided
+            if status:
+                query = query.eq('status', status)
+
+            # Filter by minimum score if provided
+            if min_score is not None:
+                query = query.gte('score', min_score)
+
+            response = query.order('created_at', desc=True).limit(limit).execute()
             return response.data if response.data else []
         except Exception as e:
             print(f"Error getting leads: {e}")
