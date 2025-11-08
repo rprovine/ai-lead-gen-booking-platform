@@ -21,7 +21,12 @@ import {
   Download,
   Loader2,
   Upload,
-  Settings
+  Settings,
+  Eye,
+  Globe,
+  MapPin,
+  Award,
+  Briefcase
 } from 'lucide-react'
 import Link from 'next/link'
 import axios from 'axios'
@@ -43,8 +48,8 @@ interface Lead {
   id?: string
   company_name: string
   website: string
-  contact_email?: string
-  contact_phone?: string
+  email?: string
+  phone?: string
   industry: string
   employee_count?: number
   location: string
@@ -196,6 +201,10 @@ export default function Dashboard() {
   const [emailTemplate, setEmailTemplate] = useState<EmailTemplate | null>(null)
   const [emailStyle, setEmailStyle] = useState<'professional' | 'casual' | 'consultative'>('professional')
   const [loadingEmail, setLoadingEmail] = useState(false)
+
+  // Lead detail modal state
+  const [showLeadDetail, setShowLeadDetail] = useState(false)
+  const [detailLead, setDetailLead] = useState<Lead | null>(null)
 
   // PDF download states
   const [downloadingPlaybook, setDownloadingPlaybook] = useState<string | null>(null)
@@ -1535,6 +1544,261 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Lead Detail Modal */}
+        {showLeadDetail && detailLead && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full my-8"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-start mb-6 pb-4 border-b">
+                <div>
+                  <h2 className="text-3xl font-bold">{detailLead.company_name}</h2>
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    <Badge variant={detailLead.score > 70 ? 'default' : 'secondary'} className="text-sm">
+                      <Award className="mr-1 h-3 w-3" />
+                      Score: {detailLead.score.toFixed(0)}
+                    </Badge>
+                    <Badge variant="outline" className="text-sm">
+                      <Briefcase className="mr-1 h-3 w-3" />
+                      {detailLead.industry}
+                    </Badge>
+                    <Badge
+                      className={
+                        detailLead.status === 'IN_HUBSPOT'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                          : detailLead.status === 'RESEARCHED'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'
+                      }
+                    >
+                      {detailLead.status === 'IN_HUBSPOT' ? 'In HubSpot' : detailLead.status === 'RESEARCHED' ? 'Researched' : 'New'}
+                    </Badge>
+                  </div>
+                </div>
+                <Button onClick={() => setShowLeadDetail(false)} variant="ghost" size="sm">✕</Button>
+              </div>
+
+              {/* Content Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto pr-2">
+                {/* Company Information */}
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-blue-600" />
+                      Company Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {detailLead.website && (
+                        <div>
+                          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Website</p>
+                          <a
+                            href={detailLead.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            <Globe className="h-4 w-4" />
+                            {detailLead.website.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      )}
+                      {detailLead.phone && (
+                        <div>
+                          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Phone</p>
+                          <a href={`tel:${detailLead.phone}`} className="text-blue-600 hover:underline flex items-center gap-1">
+                            <Phone className="h-4 w-4" />
+                            {detailLead.phone}
+                          </a>
+                        </div>
+                      )}
+                      {detailLead.email && (
+                        <div>
+                          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Email</p>
+                          <a href={`mailto:${detailLead.email}`} className="text-blue-600 hover:underline flex items-center gap-1">
+                            <Mail className="h-4 w-4" />
+                            {detailLead.email}
+                          </a>
+                        </div>
+                      )}
+                      {detailLead.location && (
+                        <div>
+                          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Location</p>
+                          <p className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4 text-red-600" />
+                            {detailLead.location}
+                          </p>
+                        </div>
+                      )}
+                      {detailLead.employee_count && (
+                        <div>
+                          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Employees</p>
+                          <p className="flex items-center gap-1">
+                            <Users className="h-4 w-4 text-purple-600" />
+                            {detailLead.employee_count} employees
+                          </p>
+                        </div>
+                      )}
+                      {detailLead.email_pattern && (
+                        <div>
+                          <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Email Pattern</p>
+                          <p className="font-mono text-sm">{detailLead.email_pattern}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Source</p>
+                        <p>{detailLead.source || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Created</p>
+                        <p>{new Date(detailLead.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Decision Makers */}
+                {detailLead.decision_makers && detailLead.decision_makers.length > 0 && (
+                  <Card className="md:col-span-2">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Users className="h-5 w-5 text-purple-600" />
+                        Decision Makers ({detailLead.decision_makers.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {detailLead.decision_makers.map((dm, i) => (
+                          <div key={i} className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <p className="font-semibold text-gray-900 dark:text-gray-100">{dm.name}</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">{dm.title}</p>
+                              </div>
+                              {dm.confidence && (
+                                <Badge variant="outline" className="text-xs">
+                                  {Math.round(dm.confidence * 100)}%
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="space-y-1 text-sm">
+                              {dm.email && (
+                                <a href={`mailto:${dm.email}`} className="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  {dm.email}
+                                </a>
+                              )}
+                              {dm.phone && (
+                                <a href={`tel:${dm.phone}`} className="text-green-600 hover:text-green-800 flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {dm.phone}
+                                </a>
+                              )}
+                              {dm.linkedin && (
+                                <a href={dm.linkedin} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 flex items-center gap-1">
+                                  🔗 LinkedIn
+                                </a>
+                              )}
+                            </div>
+                            {dm.source && (
+                              <p className="text-xs text-gray-400 mt-2">via {dm.source}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Pain Points */}
+                {detailLead.pain_points && detailLead.pain_points.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Target className="h-5 w-5 text-red-600" />
+                        Pain Points
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {detailLead.pain_points.map((pain, i) => (
+                          <div key={i} className="flex gap-2 items-start">
+                            <Badge variant="outline" className="shrink-0">{i + 1}</Badge>
+                            <p className="text-sm">{pain}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Tech Stack */}
+                {detailLead.tech_stack && detailLead.tech_stack.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-yellow-600" />
+                        Tech Stack
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {detailLead.tech_stack.map((tech, i) => (
+                          <Badge key={i} variant="secondary">{tech}</Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="mt-6 pt-6 border-t flex gap-2 flex-wrap justify-end">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setShowLeadDetail(false)
+                    fetchIntelligence(detailLead)
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600"
+                >
+                  <Brain className="mr-2 h-4 w-4" />
+                  View AI Intelligence
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setShowLeadDetail(false)
+                    generateEmailTemplate(detailLead, 'professional')
+                  }}
+                  variant="outline"
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Generate Email
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setShowLeadDetail(false)
+                    openBookingModal(detailLead)
+                  }}
+                  className="bg-gradient-to-r from-green-600 to-teal-600"
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Book Meeting
+                </Button>
+                <Button onClick={() => setShowLeadDetail(false)} variant="outline">
+                  Close
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {/* Main Content */}
         <Tabs defaultValue="leads" className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
@@ -1744,6 +2008,18 @@ export default function Dashboard() {
 
                         {/* Action Buttons Row */}
                         <div className="px-4 pb-4 flex gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setDetailLead(lead)
+                              setShowLeadDetail(true)
+                            }}
+                            variant="outline"
+                            title="View Full Lead Details"
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Details
+                          </Button>
                           <Button
                             size="sm"
                             onClick={() => fetchIntelligence(lead)}

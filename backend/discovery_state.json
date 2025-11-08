@@ -2,19 +2,75 @@
   "last_discovery": null,
   "sources_checked": {},
   "seen_companies": [
-    "maui pack and ship",
-    "hawaiian aroma caffe",
-    "big beach digital llc",
-    "aloha business services",
-    "aloha business center",
-    "pacific it support",
+    "ithawaii.com",
+    "kamuela business center",
     "aura hawaii llc",
-    "maui tax, llc"
+    "hawaii business research library (hbrl)",
+    "paradise leis",
+    "kona-kohala chamber of commerce",
+    "a.m. business services inc.",
+    "hawaii business directory i local business listings",
+    "islands marketing",
+    "hawaiian aroma caffe",
+    "department of commerce & consumer affairs",
+    "a-1 business services inc",
+    "aloha business services",
+    "hawaii promotion company",
+    "big beach digital llc",
+    "pacific it support",
+    "hma - hawaii mainland administrators",
+    "maui pack and ship",
+    "ai hawaii llc",
+    "university of hawaii at manoa",
+    "maui tax, llc",
+    "hawaiian vanilla co.",
+    "hawaii state business directory",
+    "aloha business center",
+    "the hawaii group (higroup)",
+    "alohagraphics",
+    "hawaii tech support",
+    "u.s. small business administration - honolulu"
   ],
   "filtered_companies": [],
   "daily_stats": {
     "2025-10-19": {
       "leads_added": 8,
+      "api_calls": 0
+    },
+    "2025-10-20": {
+      "leads_added": 8,
+      "api_calls": 0
+    },
+    "2025-10-21": {
+      "leads_added": 4,
+      "api_calls": 0
+    },
+    "2025-10-22": {
+      "leads_added": 1,
+      "api_calls": 0
+    },
+    "2025-10-23": {
+      "leads_added": 1,
+      "api_calls": 0
+    },
+    "2025-10-24": {
+      "leads_added": 0,
+      "api_calls": 0
+    },
+    "2025-10-25": {
+      "leads_added": 3,
+      "api_calls": 0
+    },
+    "2025-10-26": {
+      "leads_added": 0,
+      "api_calls": 0
+    },
+    "2025-10-27": {
+      "leads_added": 0,
+      "api_calls": 0
+    },
+    "2025-11-08": {
+      "leads_added": 3,
       "api_calls": 0
     }
   }

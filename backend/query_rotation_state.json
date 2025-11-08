@@ -19,17 +19,217 @@
     {
       "query": "Honolulu restaurant",
       "used_at": "2025-10-19T12:30:34.233801"
+    },
+    {
+      "query": "Honolulu resort",
+      "used_at": "2025-10-20T09:00:01.680211"
+    },
+    {
+      "query": "Oahu resort",
+      "used_at": "2025-10-20T09:00:01.680230"
+    },
+    {
+      "query": "Honolulu activity provider",
+      "used_at": "2025-10-20T09:00:01.680239"
+    },
+    {
+      "query": "Oahu activity provider",
+      "used_at": "2025-10-20T09:00:01.680246"
+    },
+    {
+      "query": "Honolulu cafe",
+      "used_at": "2025-10-20T09:00:01.680254"
+    },
+    {
+      "query": "Honolulu vacation rental",
+      "used_at": "2025-10-21T09:00:01.061330"
+    },
+    {
+      "query": "Oahu vacation rental",
+      "used_at": "2025-10-21T09:00:01.061342"
+    },
+    {
+      "query": "Honolulu tour company",
+      "used_at": "2025-10-21T09:00:01.061346"
+    },
+    {
+      "query": "Oahu tour company",
+      "used_at": "2025-10-21T09:00:01.061350"
+    },
+    {
+      "query": "Honolulu coffee shop",
+      "used_at": "2025-10-21T09:00:01.061354"
+    },
+    {
+      "query": "Honolulu bed and breakfast",
+      "used_at": "2025-10-22T09:00:00.743315"
+    },
+    {
+      "query": "Oahu bed and breakfast",
+      "used_at": "2025-10-22T09:00:00.743344"
+    },
+    {
+      "query": "Honolulu excursion",
+      "used_at": "2025-10-22T09:00:00.743353"
+    },
+    {
+      "query": "Oahu excursion",
+      "used_at": "2025-10-22T09:00:00.743361"
+    },
+    {
+      "query": "Honolulu bar",
+      "used_at": "2025-10-22T09:00:00.743369"
+    },
+    {
+      "query": "Honolulu inn",
+      "used_at": "2025-10-22T14:52:58.795268"
+    },
+    {
+      "query": "Oahu inn",
+      "used_at": "2025-10-22T14:52:58.795279"
+    },
+    {
+      "query": "Honolulu sightseeing",
+      "used_at": "2025-10-22T14:52:58.795283"
+    },
+    {
+      "query": "Oahu sightseeing",
+      "used_at": "2025-10-22T14:52:58.795287"
+    },
+    {
+      "query": "Honolulu food truck",
+      "used_at": "2025-10-22T14:52:58.795292"
+    },
+    {
+      "query": "Honolulu lodge",
+      "used_at": "2025-10-23T09:00:01.415307"
+    },
+    {
+      "query": "Oahu lodge",
+      "used_at": "2025-10-23T09:00:01.415323"
+    },
+    {
+      "query": "Honolulu adventure tours",
+      "used_at": "2025-10-23T09:00:01.415335"
+    },
+    {
+      "query": "Oahu adventure tours",
+      "used_at": "2025-10-23T09:00:01.415338"
+    },
+    {
+      "query": "Honolulu catering",
+      "used_at": "2025-10-23T09:00:01.415342"
+    },
+    {
+      "query": "Honolulu hostel",
+      "used_at": "2025-10-24T09:00:01.359791"
+    },
+    {
+      "query": "Oahu hostel",
+      "used_at": "2025-10-24T09:00:01.360152"
+    },
+    {
+      "query": "Honolulu snorkeling",
+      "used_at": "2025-10-24T09:00:01.360155"
+    },
+    {
+      "query": "Oahu snorkeling",
+      "used_at": "2025-10-24T09:00:01.360161"
+    },
+    {
+      "query": "Honolulu bakery",
+      "used_at": "2025-10-24T09:00:01.360162"
+    },
+    {
+      "query": "Honolulu accommodation",
+      "used_at": "2025-10-25T09:00:01.381886"
+    },
+    {
+      "query": "Oahu accommodation",
+      "used_at": "2025-10-25T09:00:01.382093"
+    },
+    {
+      "query": "Honolulu luau",
+      "used_at": "2025-10-25T09:00:01.382099"
+    },
+    {
+      "query": "Oahu luau",
+      "used_at": "2025-10-25T09:00:01.382277"
+    },
+    {
+      "query": "Honolulu dining",
+      "used_at": "2025-10-25T09:00:01.382282"
+    },
+    {
+      "query": "Honolulu beachfront hotel",
+      "used_at": "2025-10-26T09:00:01.350052"
+    },
+    {
+      "query": "Oahu beachfront hotel",
+      "used_at": "2025-10-26T09:00:01.350241"
+    },
+    {
+      "query": "Honolulu boat tours",
+      "used_at": "2025-10-26T09:00:01.350246"
+    },
+    {
+      "query": "Oahu boat tours",
+      "used_at": "2025-10-26T09:00:01.350248"
+    },
+    {
+      "query": "Honolulu fast food",
+      "used_at": "2025-10-26T09:00:01.350249"
+    },
+    {
+      "query": "Honolulu boutique hotel",
+      "used_at": "2025-10-27T09:00:00.805403"
+    },
+    {
+      "query": "Oahu boutique hotel",
+      "used_at": "2025-10-27T09:00:00.805632"
+    },
+    {
+      "query": "Honolulu helicopter tours",
+      "used_at": "2025-10-27T09:00:00.805646"
+    },
+    {
+      "query": "Oahu helicopter tours",
+      "used_at": "2025-10-27T09:00:00.805655"
+    },
+    {
+      "query": "Honolulu fine dining",
+      "used_at": "2025-10-27T09:00:00.805657"
+    },
+    {
+      "query": "Honolulu luxury resort",
+      "used_at": "2025-11-08T10:35:47.758586"
+    },
+    {
+      "query": "Oahu luxury resort",
+      "used_at": "2025-11-08T10:35:47.758594"
+    },
+    {
+      "query": "Honolulu zipline",
+      "used_at": "2025-11-08T10:35:47.758608"
+    },
+    {
+      "query": "Oahu zipline",
+      "used_at": "2025-11-08T10:35:47.758616"
+    },
+    {
+      "query": "Honolulu seafood restaurant",
+      "used_at": "2025-11-08T10:35:47.758619"
     }
   ],
   "last_rotation": null,
   "source_exhaustion": {
-    "discovery_service": 4.0,
-    "discovery_service_last_check": "2025-10-19T12:32:28.023506"
+    "discovery_service": 21.221409152599996,
+    "discovery_service_last_check": "2025-11-08T10:38:02.188401"
   },
   "industry_rotation": {
-    "hospitality": 1,
-    "tourism": 1,
-    "restaurant": 1
+    "hospitality": 11,
+    "tourism": 0,
+    "restaurant": 11
   },
   "location_rotation": {}
 }
