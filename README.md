@@ -10,7 +10,7 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 - **ICP Management**: Define and manage your Ideal Customer Profile with smart targeting
 - **Lead Enrichment Pipeline**: Automated workflow to enrich leads with Perplexity research and AI-generated playbooks
 - **Intelligent Lead Scoring**: LangChain agents score leads based on multiple factors
-- **Lead Status Tracking**: Track leads through NEW → RESEARCHED → IN_HUBSPOT lifecycle
+- **5-Stage Sales Pipeline**: Track leads through NEW → CONTACTED → QUALIFIED → OPPORTUNITY → WON/LOST lifecycle with visual status management
 
 ### Settings & Configuration 🆕
 - **Business Profile**: Configure your company information, value proposition, and sales cycle
@@ -21,6 +21,19 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 - **Notifications**: Email and Slack alerts for new high-score leads
 - **Integrations**: CRM auto-sync, export formats, and webhook configurations
 - **AI Personalization**: Customize AI tone, research depth, and model preferences
+
+### Pipeline Management & Analytics 🆕
+- **Lead Detail Views**: Comprehensive lead information modal showing company details, decision makers, pain points, and tech stack
+- **Visual Status Workflow**: Drag-and-drop status updates with dropdown controls on each lead card
+- **Stage Filtering**: Filter leads by pipeline stage (All, New, Contacted, Qualified, Opportunity, Won, Lost)
+- **Pipeline Analytics Dashboard**: Real-time metrics showing:
+  - Lead count and percentage for each pipeline stage
+  - Win rate (Won / Total Closed deals)
+  - Stage-to-stage conversion rates
+  - Active pipeline count (leads in progress)
+  - Visual funnel with progress bars for each conversion stage
+- **Status History**: Track status changes with timestamps and optional notes
+- **Performance Metrics**: Monitor qualification rates, opportunity conversion, and overall pipeline health
 
 ### AI-Powered Intelligence
 - **Perplexity AI Research**: Real-time company intelligence from the past 90 days (news, leadership, market position)
@@ -207,25 +220,35 @@ Click the **"Discover New Leads"** button in the dashboard. The AI will:
 - Find decision maker contact information from multiple sources
 - Display them in your pipeline
 
-### 2. Enrich Leads
+### 2. Manage Pipeline Status
+
+Use the visual pipeline controls to move leads through your sales funnel:
+- **NEW**: Recently discovered leads
+- **CONTACTED**: Leads you've reached out to
+- **QUALIFIED**: Leads that meet your ICP criteria
+- **OPPORTUNITY**: Active deals in progress
+- **WON**: Successfully closed deals
+- **LOST**: Deals that didn't close
+
+Update status using the dropdown on each lead card or filter by stage using the tabs.
+
+### 3. Enrich Leads
 
 The enrichment pipeline automatically:
 - Conducts Perplexity AI research on each company
 - Finds decision maker contacts (Apollo, Hunter, Perplexity, Google)
 - Generates personalized PDF sales playbooks
 - Creates AI-powered sales intelligence
-- Updates lead status: NEW → RESEARCHED
 
-### 3. Sync to HubSpot
+### 4. Sync to HubSpot
 
 Send enriched leads to HubSpot CRM:
 - Creates/updates contact records for decision makers
 - Creates/updates company records
 - Adds formatted intelligence notes with research
 - Links to downloadable PDF playbooks
-- Updates lead status: RESEARCHED → IN_HUBSPOT
 
-### 4. Generate Outreach
+### 5. Generate Outreach
 
 For each lead, you can:
 - Click the email icon to generate a personalized email
@@ -233,7 +256,7 @@ For each lead, you can:
 - Review and edit the AI-generated content
 - Send directly through the platform
 
-### 5. Book Appointments
+### 6. Book Appointments
 
 Click **"Book Meeting"** to schedule an appointment at your Honolulu office. The system will:
 - Find available time slots
@@ -241,16 +264,26 @@ Click **"Book Meeting"** to schedule an appointment at your Honolulu office. The
 - Send confirmations to the lead
 - Add reminders
 
-### 6. Monitor Analytics
+### 7. Monitor Analytics
 
-The dashboard shows:
+The dashboard provides comprehensive metrics:
+
+**Overview Cards:**
 - Total leads discovered
 - Qualified leads (score > 70)
 - Appointments booked
 - Conversion rate
 - Revenue potential
 
-### 7. Automated Daily Discovery (Optional)
+**Pipeline Analytics:**
+- Lead count and percentage for each stage
+- Win rate (Won / Total Closed)
+- Contact → Qualified conversion rate
+- Qualified → Opportunity conversion rate
+- Active pipeline count
+- Visual funnel showing stage-to-stage progression
+
+### 8. Automated Daily Discovery (Optional)
 
 Set up a cron job for hands-free lead generation:
 ```bash
@@ -276,6 +309,7 @@ Once the backend is running, visit http://localhost:8000/docs for interactive AP
 - `POST /api/leads/discover` - Discover new leads from multiple sources
 - `GET /api/leads?status=NEW&min_score=70` - Get leads with filters (status, min_score)
 - `POST /api/leads/score` - Score a lead
+- `PUT /api/leads/{lead_id}/status` - Update lead pipeline status (NEW, CONTACTED, QUALIFIED, OPPORTUNITY, WON, LOST)
 - `POST /api/leads/{lead_id}/intelligence?refresh=true` - Generate AI intelligence with Perplexity research
 - `GET /api/leads/{lead_id}/playbook` - Download PDF sales playbook
 - `POST /api/leads/{lead_id}/email-template?template_style=professional` - Generate email template
@@ -339,7 +373,8 @@ ai-lead-gen-booking-platform/
 │   └── migrations/
 │       ├── 20251108104601_create_data_sources_table.sql
 │       ├── 20251108105500_fix_data_sources_rls.sql
-│       └── 20251108112000_create_settings_tables.sql
+│       ├── 20251108112000_create_settings_tables.sql
+│       └── 20251108150000_add_lead_status_workflow.sql
 │   ├── Documentation/
 │   │   ├── COMPLETE_SYSTEM_SUMMARY.md   # Full system overview
 │   │   ├── HOW_IT_WORKS.md              # Workflow documentation
