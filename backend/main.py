@@ -3327,6 +3327,560 @@ async def delete_appointment(appointment_id: int):
         raise HTTPException(status_code=500, detail="Failed to delete appointment")
 
 
+# ============= DATA SOURCES CONFIGURATION =============
+
+class DataSourceConfigUpdate(BaseModel):
+    """Model for updating data source configuration"""
+    is_enabled: Optional[bool] = None
+    api_key: Optional[str] = None
+    api_secret: Optional[str] = None
+    config: Optional[Dict] = None
+
+@app.get("/api/data-sources")
+async def get_data_sources(organization_id: str = 'default'):
+    """Get all configured data sources for an organization"""
+    try:
+        data_sources = await supabase_db.get_data_sources(organization_id)
+
+        # Mask sensitive data (don't send full API keys to frontend)
+        for source in data_sources:
+            if source.get('api_key'):
+                # Show only last 4 characters
+                source['api_key_masked'] = '***' + source['api_key'][-4:] if len(source['api_key']) > 4 else '***'
+                source.pop('api_key', None)  # Remove actual key
+            if source.get('api_secret'):
+                source['api_secret_masked'] = '***'
+                source.pop('api_secret', None)
+
+        return data_sources
+    except Exception as e:
+        print(f"Error fetching data sources: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch data sources: {str(e)}")
+
+@app.get("/api/data-sources/{source_type}")
+async def get_data_source(source_type: str, organization_id: str = 'default'):
+    """Get a specific data source configuration"""
+    try:
+        source = await supabase_db.get_data_source(source_type, organization_id)
+        if not source:
+            raise HTTPException(status_code=404, detail=f"Data source '{source_type}' not found")
+
+        # Mask sensitive data
+        if source.get('api_key'):
+            source['api_key_masked'] = '***' + source['api_key'][-4:] if len(source['api_key']) > 4 else '***'
+            source.pop('api_key', None)
+        if source.get('api_secret'):
+            source['api_secret_masked'] = '***'
+            source.pop('api_secret', None)
+
+        return source
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching data source: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch data source: {str(e)}")
+
+@app.patch("/api/data-sources/{source_type}")
+async def update_data_source_config(
+    source_type: str,
+    update: DataSourceConfigUpdate,
+    organization_id: str = 'default'
+):
+    """Update data source configuration"""
+    try:
+        update_data = {}
+
+        if update.is_enabled is not None:
+            update_data['is_enabled'] = update.is_enabled
+        if update.api_key is not None:
+            # TODO: Encrypt API key before storing
+            update_data['api_key'] = update.api_key
+        if update.api_secret is not None:
+            # TODO: Encrypt API secret before storing
+            update_data['api_secret'] = update.api_secret
+        if update.config is not None:
+            update_data['config'] = update.config
+
+        result = await supabase_db.update_data_source(source_type, update_data, organization_id)
+
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Data source '{source_type}' not found")
+
+        # Mask sensitive data in response
+        if result.get('api_key'):
+            result['api_key_masked'] = '***' + result['api_key'][-4:] if len(result['api_key']) > 4 else '***'
+            result.pop('api_key', None)
+        if result.get('api_secret'):
+            result['api_secret_masked'] = '***'
+            result.pop('api_secret', None)
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating data source: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update data source: {str(e)}")
+
+@app.post("/api/data-sources/{source_type}/toggle")
+async def toggle_data_source(
+    source_type: str,
+    enabled: bool,
+    organization_id: str = 'default'
+):
+    """Enable or disable a data source"""
+    try:
+        result = await supabase_db.toggle_data_source(source_type, enabled, organization_id)
+
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Data source '{source_type}' not found")
+
+        return {
+            "message": f"Data source '{source_type}' {'enabled' if enabled else 'disabled'} successfully",
+            "is_enabled": enabled
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error toggling data source: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to toggle data source: {str(e)}")
+
+@app.post("/api/data-sources/{source_type}/test")
+async def test_data_source(
+    source_type: str,
+    organization_id: str = 'default'
+):
+    """Test a data source connection"""
+    try:
+        # Get the data source configuration
+        source = await supabase_db.get_data_source(source_type, organization_id)
+
+        if not source:
+            raise HTTPException(status_code=404, detail=f"Data source '{source_type}' not found")
+
+        # Perform actual connection test based on source type
+        test_result = {'success': False, 'message': 'Test not implemented'}
+
+        # Test different source types
+        if source_type == 'anthropic' and source.get('api_key'):
+            try:
+                test_claude = ChatAnthropic(anthropic_api_key=source['api_key'], model="claude-sonnet-4-5-20250929")
+                response = test_claude.invoke("Reply with 'OK'")
+                test_result = {'success': True, 'message': 'Connection successful'}
+            except Exception as e:
+                test_result = {'success': False, 'message': f'Connection failed: {str(e)}'}
+
+        elif source_type == 'openai' and source.get('api_key'):
+            try:
+                import openai
+                openai.api_key = source['api_key']
+                openai.Model.list()
+                test_result = {'success': True, 'message': 'Connection successful'}
+            except Exception as e:
+                test_result = {'success': False, 'message': f'Connection failed: {str(e)}'}
+
+        elif source_type == 'perplexity' and source.get('api_key'):
+            try:
+                # Test Perplexity API
+                test_headers = {'Authorization': f"Bearer {source['api_key']}"}
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        'https://api.perplexity.ai/chat/completions',
+                        headers=test_headers,
+                        json={'model': 'sonar', 'messages': [{'role': 'user', 'content': 'test'}]},
+                        timeout=10.0
+                    )
+                    if response.status_code == 200:
+                        test_result = {'success': True, 'message': 'Connection successful'}
+                    else:
+                        test_result = {'success': False, 'message': f'API returned status {response.status_code}'}
+            except Exception as e:
+                test_result = {'success': False, 'message': f'Connection failed: {str(e)}'}
+
+        elif source_type == 'hubspot' and source.get('api_key'):
+            try:
+                if HUBSPOT_AVAILABLE:
+                    test_client = HubSpot(access_token=source['api_key'])
+                    # Try to get account info
+                    test_client.crm.contacts.get_all(limit=1)
+                    test_result = {'success': True, 'message': 'Connection successful'}
+                else:
+                    test_result = {'success': False, 'message': 'HubSpot SDK not installed'}
+            except Exception as e:
+                test_result = {'success': False, 'message': f'Connection failed: {str(e)}'}
+
+        else:
+            test_result = {'success': False, 'message': f'Testing not yet implemented for {source_type}'}
+
+        # Update database with test results
+        await supabase_db.update_data_source(source_type, {
+            'last_tested_at': datetime.now().isoformat(),
+            'test_status': 'success' if test_result['success'] else 'failed',
+            'test_message': test_result['message']
+        }, organization_id)
+
+        return test_result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error testing data source: {e}")
+        # Update database with error
+        try:
+            await supabase_db.update_data_source(source_type, {
+                'last_tested_at': datetime.now().isoformat(),
+                'test_status': 'failed',
+                'test_message': str(e)
+            }, organization_id)
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Failed to test data source: {str(e)}")
+
+@app.get("/api/data-sources/stats/enabled")
+async def get_enabled_data_sources_stats(organization_id: str = 'default'):
+    """Get statistics about enabled data sources"""
+    try:
+        all_sources = await supabase_db.get_data_sources(organization_id)
+
+        enabled_count = sum(1 for s in all_sources if s.get('is_enabled'))
+        tested_count = sum(1 for s in all_sources if s.get('test_status') == 'success')
+
+        # Group by category
+        categories = {
+            'ai': ['anthropic', 'openai', 'google_ai', 'perplexity'],
+            'contact_finding': ['apollo', 'hunter', 'rocketreach'],
+            'discovery': ['serpapi', 'linkedin', 'linkedin_sales_nav'],
+            'outreach': ['hubspot', 'sendgrid', 'twilio']
+        }
+
+        enabled_by_category = {}
+        for category, source_types in categories.items():
+            category_sources = [s for s in all_sources if s['source_type'] in source_types]
+            enabled_by_category[category] = {
+                'total': len(category_sources),
+                'enabled': sum(1 for s in category_sources if s.get('is_enabled')),
+                'sources': [s['source_name'] for s in category_sources if s.get('is_enabled')]
+            }
+
+        return {
+            'total_sources': len(all_sources),
+            'enabled_sources': enabled_count,
+            'tested_successfully': tested_count,
+            'by_category': enabled_by_category
+        }
+    except Exception as e:
+        print(f"Error getting data source stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+# ============= SETTINGS ENDPOINTS =============
+
+# Pydantic Models for Settings
+class BusinessProfileUpdate(BaseModel):
+    organization_id: Optional[str] = 'default'
+    company_name: Optional[str] = None
+    industry: Optional[str] = None
+    description: Optional[str] = None
+    products_services: Optional[str] = None
+    value_proposition: Optional[str] = None
+    typical_deal_size: Optional[str] = None
+    sales_cycle_length: Optional[str] = None
+    key_differentiators: Optional[str] = None
+    case_studies: Optional[str] = None
+    website: Optional[str] = None
+
+class ICPConfigCreate(BaseModel):
+    organization_id: Optional[str] = 'default'
+    profile_name: str = 'Default ICP'
+    is_active: Optional[bool] = True
+    employee_count_min: Optional[int] = None
+    employee_count_max: Optional[int] = None
+    annual_revenue_min: Optional[int] = None
+    annual_revenue_max: Optional[int] = None
+    company_age_min: Optional[int] = None
+    company_age_max: Optional[int] = None
+    company_types: Optional[List[str]] = []
+    industries: Optional[List[str]] = []
+    sub_industries: Optional[List[str]] = []
+    industry_keywords: Optional[List[str]] = []
+    excluded_industries: Optional[List[str]] = []
+    target_countries: Optional[List[str]] = ["US"]
+    target_states: Optional[List[str]] = ["HI"]
+    target_cities: Optional[List[str]] = []
+    target_zip_codes: Optional[List[str]] = []
+    decision_maker_titles: Optional[List[str]] = []
+    decision_maker_seniority: Optional[List[str]] = []
+    decision_maker_departments: Optional[List[str]] = []
+    multiple_decision_makers: Optional[bool] = False
+    recently_funded: Optional[bool] = False
+    actively_hiring: Optional[bool] = False
+    recent_tech_adoption: Optional[bool] = False
+    expanding_locations: Optional[bool] = False
+
+class LeadPreferencesUpdate(BaseModel):
+    organization_id: Optional[str] = 'default'
+    leads_per_batch: Optional[int] = None
+    min_lead_score: Optional[int] = None
+    refresh_frequency: Optional[str] = None
+    quality_vs_quantity: Optional[int] = None
+    excluded_companies: Optional[List[str]] = None
+    excluded_domains: Optional[List[str]] = None
+    include_competitors: Optional[bool] = None
+
+class SearchDiscoverySettingsUpdate(BaseModel):
+    organization_id: Optional[str] = 'default'
+    priority_keywords: Optional[List[str]] = None
+    priority_websites: Optional[List[str]] = None
+    search_territories: Optional[List[str]] = None
+    social_platforms: Optional[List[str]] = None
+    news_sources: Optional[List[str]] = None
+
+class NotificationSettingsUpdate(BaseModel):
+    organization_id: Optional[str] = 'default'
+    email_enabled: Optional[bool] = None
+    email_address: Optional[str] = None
+    new_lead_alerts: Optional[bool] = None
+    lead_score_threshold: Optional[int] = None
+    digest_frequency: Optional[str] = None
+    slack_webhook: Optional[str] = None
+    teams_webhook: Optional[str] = None
+
+class IntegrationSettingsUpdate(BaseModel):
+    organization_id: Optional[str] = 'default'
+    crm_type: Optional[str] = None
+    crm_auto_sync: Optional[bool] = None
+    export_format: Optional[str] = None
+    webhook_url: Optional[str] = None
+    calendar_integration: Optional[bool] = None
+    calendar_type: Optional[str] = None
+
+class AIPersonalizationSettingsUpdate(BaseModel):
+    organization_id: Optional[str] = 'default'
+    tone: Optional[str] = None
+    research_depth: Optional[str] = None
+    preferred_model: Optional[str] = None
+    custom_prompt_template: Optional[str] = None
+
+# Business Profile Endpoints
+@app.get("/api/settings/business-profile")
+async def get_business_profile(organization_id: str = 'default'):
+    """Get business profile settings"""
+    try:
+        profile = await supabase_db.get_business_profile(organization_id)
+        if not profile:
+            return {}
+        return profile
+    except Exception as e:
+        print(f"Error getting business profile: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get business profile: {str(e)}")
+
+@app.put("/api/settings/business-profile")
+async def update_business_profile(profile: BusinessProfileUpdate):
+    """Update business profile settings"""
+    try:
+        profile_data = profile.dict(exclude_unset=True)
+        result = await supabase_db.upsert_business_profile(profile_data)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update business profile")
+        return result
+    except Exception as e:
+        print(f"Error updating business profile: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update business profile: {str(e)}")
+
+# ICP Config Endpoints
+@app.get("/api/settings/icp")
+async def get_icp_configs(organization_id: str = 'default'):
+    """Get all ICP configurations"""
+    try:
+        configs = await supabase_db.get_icp_configs(organization_id)
+        return configs
+    except Exception as e:
+        print(f"Error getting ICP configs: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get ICP configs: {str(e)}")
+
+@app.get("/api/settings/icp/{icp_id}")
+async def get_icp_config(icp_id: str):
+    """Get a specific ICP configuration"""
+    try:
+        config = await supabase_db.get_icp_config(icp_id)
+        if not config:
+            raise HTTPException(status_code=404, detail="ICP config not found")
+        return config
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting ICP config: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get ICP config: {str(e)}")
+
+@app.post("/api/settings/icp")
+async def create_icp_config(icp: ICPConfigCreate):
+    """Create a new ICP configuration"""
+    try:
+        icp_data = icp.dict(exclude_unset=True)
+        result = await supabase_db.create_icp_config(icp_data)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to create ICP config")
+        return result
+    except Exception as e:
+        print(f"Error creating ICP config: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create ICP config: {str(e)}")
+
+@app.put("/api/settings/icp/{icp_id}")
+async def update_icp_config(icp_id: str, icp: ICPConfigCreate):
+    """Update an ICP configuration"""
+    try:
+        icp_data = icp.dict(exclude_unset=True)
+        result = await supabase_db.update_icp_config(icp_id, icp_data)
+        if not result:
+            raise HTTPException(status_code=404, detail="ICP config not found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating ICP config: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update ICP config: {str(e)}")
+
+@app.delete("/api/settings/icp/{icp_id}")
+async def delete_icp_config(icp_id: str):
+    """Delete an ICP configuration"""
+    try:
+        success = await supabase_db.delete_icp_config(icp_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="ICP config not found")
+        return {"message": "ICP config deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting ICP config: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete ICP config: {str(e)}")
+
+# Lead Preferences Endpoints
+@app.get("/api/settings/lead-preferences")
+async def get_lead_preferences(organization_id: str = 'default'):
+    """Get lead generation preferences"""
+    try:
+        preferences = await supabase_db.get_lead_preferences(organization_id)
+        if not preferences:
+            return {}
+        return preferences
+    except Exception as e:
+        print(f"Error getting lead preferences: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get lead preferences: {str(e)}")
+
+@app.put("/api/settings/lead-preferences")
+async def update_lead_preferences(preferences: LeadPreferencesUpdate):
+    """Update lead generation preferences"""
+    try:
+        pref_data = preferences.dict(exclude_unset=True)
+        result = await supabase_db.upsert_lead_preferences(pref_data)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update lead preferences")
+        return result
+    except Exception as e:
+        print(f"Error updating lead preferences: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update lead preferences: {str(e)}")
+
+# Search & Discovery Settings Endpoints
+@app.get("/api/settings/search-discovery")
+async def get_search_discovery_settings(organization_id: str = 'default'):
+    """Get search & discovery settings"""
+    try:
+        settings = await supabase_db.get_search_discovery_settings(organization_id)
+        if not settings:
+            return {}
+        return settings
+    except Exception as e:
+        print(f"Error getting search discovery settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get search discovery settings: {str(e)}")
+
+@app.put("/api/settings/search-discovery")
+async def update_search_discovery_settings(settings: SearchDiscoverySettingsUpdate):
+    """Update search & discovery settings"""
+    try:
+        settings_data = settings.dict(exclude_unset=True)
+        result = await supabase_db.upsert_search_discovery_settings(settings_data)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update search discovery settings")
+        return result
+    except Exception as e:
+        print(f"Error updating search discovery settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update search discovery settings: {str(e)}")
+
+# Notification Settings Endpoints
+@app.get("/api/settings/notifications")
+async def get_notification_settings(organization_id: str = 'default'):
+    """Get notification settings"""
+    try:
+        settings = await supabase_db.get_notification_settings(organization_id)
+        if not settings:
+            return {}
+        return settings
+    except Exception as e:
+        print(f"Error getting notification settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get notification settings: {str(e)}")
+
+@app.put("/api/settings/notifications")
+async def update_notification_settings(settings: NotificationSettingsUpdate):
+    """Update notification settings"""
+    try:
+        settings_data = settings.dict(exclude_unset=True)
+        result = await supabase_db.upsert_notification_settings(settings_data)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update notification settings")
+        return result
+    except Exception as e:
+        print(f"Error updating notification settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update notification settings: {str(e)}")
+
+# Integration Settings Endpoints
+@app.get("/api/settings/integrations")
+async def get_integration_settings(organization_id: str = 'default'):
+    """Get integration settings"""
+    try:
+        settings = await supabase_db.get_integration_settings(organization_id)
+        if not settings:
+            return {}
+        return settings
+    except Exception as e:
+        print(f"Error getting integration settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get integration settings: {str(e)}")
+
+@app.put("/api/settings/integrations")
+async def update_integration_settings(settings: IntegrationSettingsUpdate):
+    """Update integration settings"""
+    try:
+        settings_data = settings.dict(exclude_unset=True)
+        result = await supabase_db.upsert_integration_settings(settings_data)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update integration settings")
+        return result
+    except Exception as e:
+        print(f"Error updating integration settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update integration settings: {str(e)}")
+
+# AI Personalization Settings Endpoints
+@app.get("/api/settings/ai-personalization")
+async def get_ai_personalization_settings(organization_id: str = 'default'):
+    """Get AI personalization settings"""
+    try:
+        settings = await supabase_db.get_ai_personalization_settings(organization_id)
+        if not settings:
+            return {}
+        return settings
+    except Exception as e:
+        print(f"Error getting AI personalization settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get AI personalization settings: {str(e)}")
+
+@app.put("/api/settings/ai-personalization")
+async def update_ai_personalization_settings(settings: AIPersonalizationSettingsUpdate):
+    """Update AI personalization settings"""
+    try:
+        settings_data = settings.dict(exclude_unset=True)
+        result = await supabase_db.upsert_ai_personalization_settings(settings_data)
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to update AI personalization settings")
+        return result
+    except Exception as e:
+        print(f"Error updating AI personalization settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update AI personalization settings: {str(e)}")
+
 # Health check
 @app.get("/health")
 async def health():

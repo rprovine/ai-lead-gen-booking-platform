@@ -20,8 +20,10 @@ import {
   Phone,
   Download,
   Loader2,
-  Upload
+  Upload,
+  Settings
 } from 'lucide-react'
+import Link from 'next/link'
 import axios from 'axios'
 import { motion } from 'framer-motion'
 
@@ -591,15 +593,25 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            LeniLani Lead Generation Platform
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            AI-Powered Lead Discovery & Appointment Booking for Hawaii Businesses
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            Office: 1050 Queen Street, Suite 100, Honolulu, HI 96814
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                LeniLani Lead Generation Platform
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
+                AI-Powered Lead Discovery & Appointment Booking for Hawaii Businesses
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Office: 1050 Queen Street, Suite 100, Honolulu, HI 96814
+              </p>
+            </div>
+            <Link href="/settings">
+              <Button variant="outline" size="lg" className="gap-2">
+                <Settings className="h-5 w-5" />
+                Settings
+              </Button>
+            </Link>
+          </div>
         </motion.div>
 
         {/* Analytics Cards */}

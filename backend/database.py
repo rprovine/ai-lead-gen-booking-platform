@@ -432,6 +432,306 @@ class SupabaseDB:
         except Exception as e:
             print(f"Error getting campaign analytics: {e}")
             return {}
+    # ============= DATA SOURCES CONFIGURATION =============
+
+    async def get_data_sources(self, organization_id: str = 'default') -> List[Dict]:
+        """Get all data source configurations for an organization"""
+        if not self.client:
+            return []
+
+        try:
+            response = self.client.table('data_sources_config').select('*').eq('organization_id', organization_id).order('source_name').execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Error getting data sources: {e}")
+            return []
+
+    async def get_data_source(self, source_type: str, organization_id: str = 'default') -> Optional[Dict]:
+        """Get a specific data source configuration"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('data_sources_config').select('*').eq('organization_id', organization_id).eq('source_type', source_type).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error getting data source: {e}")
+            return None
+
+    async def update_data_source(self, source_type: str, update_data: Dict, organization_id: str = 'default') -> Optional[Dict]:
+        """Update a data source configuration"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('data_sources_config').update(update_data).eq('organization_id', organization_id).eq('source_type', source_type).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error updating data source: {e}")
+            return None
+
+    async def toggle_data_source(self, source_type: str, is_enabled: bool, organization_id: str = 'default') -> Optional[Dict]:
+        """Enable or disable a data source"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('data_sources_config').update({
+                'is_enabled': is_enabled
+            }).eq('organization_id', organization_id).eq('source_type', source_type).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error toggling data source: {e}")
+            return None
+
+    async def upsert_data_source(self, source_data: Dict) -> Optional[Dict]:
+        """Insert or update a data source configuration"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('data_sources_config').upsert(source_data).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error upserting data source: {e}")
+            return None
+
+    async def test_data_source_connection(self, source_type: str, organization_id: str = 'default') -> Dict:
+        """Test a data source connection and update test status"""
+        if not self.client:
+            return {'success': False, 'message': 'Database not connected'}
+
+        try:
+            # Update test timestamp and status
+            await self.update_data_source(source_type, {
+                'last_tested_at': datetime.now().isoformat(),
+                'test_status': 'testing'
+            }, organization_id)
+
+            # The actual connection test will be done in the API endpoint
+            # This method just updates the database record
+            return {'success': True, 'message': 'Test initiated'}
+        except Exception as e:
+            print(f"Error testing data source: {e}")
+            return {'success': False, 'message': str(e)}
+
+    # ============= SETTINGS: BUSINESS PROFILE =============
+
+    async def get_business_profile(self, organization_id: str = 'default') -> Optional[Dict]:
+        """Get business profile for an organization"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('business_profile').select('*').eq('organization_id', organization_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error getting business profile: {e}")
+            return None
+
+    async def upsert_business_profile(self, profile_data: Dict) -> Optional[Dict]:
+        """Insert or update business profile"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('business_profile').upsert(profile_data).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error upserting business profile: {e}")
+            return None
+
+    # ============= SETTINGS: ICP CONFIG =============
+
+    async def get_icp_configs(self, organization_id: str = 'default') -> List[Dict]:
+        """Get all ICP configurations for an organization"""
+        if not self.client:
+            return []
+
+        try:
+            response = self.client.table('icp_config').select('*').eq('organization_id', organization_id).execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Error getting ICP configs: {e}")
+            return []
+
+    async def get_icp_config(self, icp_id: str) -> Optional[Dict]:
+        """Get a specific ICP configuration by ID"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('icp_config').select('*').eq('id', icp_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error getting ICP config: {e}")
+            return None
+
+    async def create_icp_config(self, icp_data: Dict) -> Optional[Dict]:
+        """Create a new ICP configuration"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('icp_config').insert(icp_data).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error creating ICP config: {e}")
+            return None
+
+    async def update_icp_config(self, icp_id: str, icp_data: Dict) -> Optional[Dict]:
+        """Update an ICP configuration"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('icp_config').update(icp_data).eq('id', icp_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error updating ICP config: {e}")
+            return None
+
+    async def delete_icp_config(self, icp_id: str) -> bool:
+        """Delete an ICP configuration"""
+        if not self.client:
+            return False
+
+        try:
+            self.client.table('icp_config').delete().eq('id', icp_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error deleting ICP config: {e}")
+            return False
+
+    # ============= SETTINGS: LEAD PREFERENCES =============
+
+    async def get_lead_preferences(self, organization_id: str = 'default') -> Optional[Dict]:
+        """Get lead generation preferences for an organization"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('lead_preferences').select('*').eq('organization_id', organization_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error getting lead preferences: {e}")
+            return None
+
+    async def upsert_lead_preferences(self, preferences_data: Dict) -> Optional[Dict]:
+        """Insert or update lead preferences"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('lead_preferences').upsert(preferences_data).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error upserting lead preferences: {e}")
+            return None
+
+    # ============= SETTINGS: SEARCH & DISCOVERY =============
+
+    async def get_search_discovery_settings(self, organization_id: str = 'default') -> Optional[Dict]:
+        """Get search & discovery settings for an organization"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('search_discovery_settings').select('*').eq('organization_id', organization_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error getting search discovery settings: {e}")
+            return None
+
+    async def upsert_search_discovery_settings(self, settings_data: Dict) -> Optional[Dict]:
+        """Insert or update search & discovery settings"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('search_discovery_settings').upsert(settings_data).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error upserting search discovery settings: {e}")
+            return None
+
+    # ============= SETTINGS: NOTIFICATIONS =============
+
+    async def get_notification_settings(self, organization_id: str = 'default') -> Optional[Dict]:
+        """Get notification settings for an organization"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('notification_settings').select('*').eq('organization_id', organization_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error getting notification settings: {e}")
+            return None
+
+    async def upsert_notification_settings(self, settings_data: Dict) -> Optional[Dict]:
+        """Insert or update notification settings"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('notification_settings').upsert(settings_data).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error upserting notification settings: {e}")
+            return None
+
+    # ============= SETTINGS: INTEGRATIONS =============
+
+    async def get_integration_settings(self, organization_id: str = 'default') -> Optional[Dict]:
+        """Get integration settings for an organization"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('integration_settings').select('*').eq('organization_id', organization_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error getting integration settings: {e}")
+            return None
+
+    async def upsert_integration_settings(self, settings_data: Dict) -> Optional[Dict]:
+        """Insert or update integration settings"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('integration_settings').upsert(settings_data).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error upserting integration settings: {e}")
+            return None
+
+    # ============= SETTINGS: AI PERSONALIZATION =============
+
+    async def get_ai_personalization_settings(self, organization_id: str = 'default') -> Optional[Dict]:
+        """Get AI personalization settings for an organization"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('ai_personalization_settings').select('*').eq('organization_id', organization_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error getting AI personalization settings: {e}")
+            return None
+
+    async def upsert_ai_personalization_settings(self, settings_data: Dict) -> Optional[Dict]:
+        """Insert or update AI personalization settings"""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.table('ai_personalization_settings').upsert(settings_data).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error upserting AI personalization settings: {e}")
+            return None
 
 
 # Global instance
