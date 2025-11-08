@@ -2004,6 +2004,13 @@ async def get_lead_intelligence(lead_id: str, refresh: bool = False):
         await supabase_db.save_intelligence(lead_id, intelligence)
         print(f"✓ Saved intelligence for {lead_id} to database")
 
+        # Mark lead as having intelligence generated
+        await supabase_db.update_lead(lead_id, {
+            "has_intelligence": True,
+            "intelligence_generated_at": datetime.now().isoformat()
+        })
+        print(f"✓ Marked lead {lead_id} as AI analyzed")
+
         # IMPORTANT: Save decision_makers to the lead record!
         if enriched_lead_data.get('decision_makers'):
             decision_makers = enriched_lead_data['decision_makers']
