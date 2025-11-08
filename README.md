@@ -12,6 +12,16 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 - **Intelligent Lead Scoring**: LangChain agents score leads based on multiple factors
 - **Lead Status Tracking**: Track leads through NEW → RESEARCHED → IN_HUBSPOT lifecycle
 
+### Settings & Configuration 🆕
+- **Business Profile**: Configure your company information, value proposition, and sales cycle
+- **ICP Builder**: Create detailed ideal customer profiles with employee count, industries, geography, and decision maker criteria
+- **Lead Preferences**: Set batch sizes, scoring thresholds, and quality vs quantity preferences
+- **Search & Discovery**: Configure search keywords, priority websites, and territories
+- **Data Source Management**: Manage API keys for 13+ external data sources (Apollo, Hunter, Perplexity, etc.)
+- **Notifications**: Email and Slack alerts for new high-score leads
+- **Integrations**: CRM auto-sync, export formats, and webhook configurations
+- **AI Personalization**: Customize AI tone, research depth, and model preferences
+
 ### AI-Powered Intelligence
 - **Perplexity AI Research**: Real-time company intelligence from the past 90 days (news, leadership, market position)
 - **Enhanced Contact Finding**: Multi-source decision maker discovery using Apollo.io, Hunter.io, Perplexity AI, and Google Search
@@ -288,6 +298,26 @@ Once the backend is running, visit http://localhost:8000/docs for interactive AP
 - `GET /api/analytics/dashboard` - Get dashboard analytics
 - `GET /health` - Health check endpoint
 
+**Settings & Configuration:**
+- `GET /api/settings/business-profile` - Get business profile
+- `PUT /api/settings/business-profile` - Update business profile
+- `GET /api/settings/icp` - Get all ICP configurations
+- `POST /api/settings/icp` - Create new ICP configuration
+- `PUT /api/settings/icp/{icp_id}` - Update ICP configuration
+- `DELETE /api/settings/icp/{icp_id}` - Delete ICP configuration
+- `GET /api/settings/lead-preferences` - Get lead preferences
+- `PUT /api/settings/lead-preferences` - Update lead preferences
+- `GET /api/settings/search-discovery` - Get search & discovery settings
+- `PUT /api/settings/search-discovery` - Update search & discovery settings
+- `GET /api/settings/notifications` - Get notification settings
+- `PUT /api/settings/notifications` - Update notification settings
+- `GET /api/settings/integrations` - Get integration settings
+- `PUT /api/settings/integrations` - Update integration settings
+- `GET /api/settings/ai-personalization` - Get AI personalization settings
+- `PUT /api/settings/ai-personalization` - Update AI personalization settings
+- `GET /api/settings/data-sources` - Get all data source configurations
+- `PUT /api/settings/data-sources/{source_id}` - Update data source configuration
+
 ## Project Structure
 
 ```
@@ -305,6 +335,11 @@ ai-lead-gen-booking-platform/
 │   │   ├── add_decision_makers_column.sql
 │   │   ├── add_hubspot_fields.sql
 │   │   └── add_status_tracking.sql
+├── supabase/
+│   └── migrations/
+│       ├── 20251108104601_create_data_sources_table.sql
+│       ├── 20251108105500_fix_data_sources_rls.sql
+│       └── 20251108112000_create_settings_tables.sql
 │   ├── Documentation/
 │   │   ├── COMPLETE_SYSTEM_SUMMARY.md   # Full system overview
 │   │   ├── HOW_IT_WORKS.md              # Workflow documentation
@@ -325,6 +360,8 @@ ai-lead-gen-booking-platform/
 ├── frontend/
 │   ├── app/
 │   │   ├── page.tsx                     # Main dashboard
+│   │   ├── settings/
+│   │   │   └── page.tsx                 # Settings & Configuration UI
 │   │   ├── layout.tsx                   # App layout
 │   │   └── globals.css                  # Global styles
 │   ├── components/
@@ -337,6 +374,7 @@ ai-lead-gen-booking-platform/
 │   └── deploy.sh                        # Deployment script
 ├── docker-compose.yml
 ├── README.md
+├── CHANGELOG.md
 └── API_KEYS_GUIDE.md
 ```
 
