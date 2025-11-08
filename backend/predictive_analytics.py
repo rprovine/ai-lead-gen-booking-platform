@@ -19,7 +19,7 @@ class PredictiveAnalytics:
     """AI-powered predictive analytics for lead scoring and insights"""
 
     def __init__(self):
-        self.model = genai.GenerativeModel('gemini-pro') if GOOGLE_API_KEY else None
+        self.model = genai.GenerativeModel('gemini-1.5-flash') if GOOGLE_API_KEY else None
 
     async def calculate_conversion_probability(self, lead: Dict, historical_data: Optional[List[Dict]] = None) -> Dict:
         """
