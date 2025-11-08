@@ -754,6 +754,112 @@ class SupabaseDB:
             print(f"Error updating lead status: {e}")
             return None
 
+    async def save_lead_prediction(self, lead_id: str, predictions: Dict) -> bool:
+        """Save predictive analytics for a lead"""
+        if not self.client:
+            return False
+
+        try:
+            # Update lead with predictions
+            lead_update = {
+                'conversion_probability': predictions.get('conversion_probability'),
+                'icp_match_score': predictions.get('icp_match_score'),
+                'lead_velocity_score': predictions.get('lead_velocity_score'),
+                'recommended_action': predictions.get('recommended_action'),
+                'best_contact_time': predictions.get('best_contact_time'),
+                'last_prediction_at': 'now()'
+            }
+
+            self.client.table('leads').update(lead_update).eq('id', lead_id).execute()
+
+            # Save prediction record
+            prediction_record = {
+                'lead_id': lead_id,
+                'prediction_type': 'conversion',
+                'prediction_value': predictions.get('conversion_probability', 0),
+                'confidence': predictions.get('confidence', 50),
+                'factors': predictions.get('factors', {})
+            }
+
+            self.client.table('lead_predictions').insert(prediction_record).execute()
+            return True
+        except Exception as e:
+            print(f"Error saving predictions: {e}")
+            return False
+
+    async def save_lead_insight(self, lead_id: str, insight_type: str, insight_text: str, priority: str = 'medium') -> bool:
+        """Save an AI-generated insight for a lead"""
+        if not self.client:
+            return False
+
+        try:
+            insight_record = {
+                'lead_id': lead_id,
+                'insight_type': insight_type,
+                'insight_text': insight_text,
+                'priority': priority,
+                'is_read': False
+            }
+
+            self.client.table('lead_insights').insert(insight_record).execute()
+            return True
+        except Exception as e:
+            print(f"Error saving insight: {e}")
+            return False
+
+    async def get_lead_insights(self, lead_id: str, unread_only: bool = False) -> List[Dict]:
+        """Get insights for a lead"""
+        if not self.client:
+            return []
+
+        try:
+            query = self.client.table('lead_insights').select('*').eq('lead_id', lead_id)
+
+            if unread_only:
+                query = query.eq('is_read', False)
+
+            response = query.order('created_at', desc=True).execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Error fetching insights: {e}")
+            return []
+
+    async def track_velocity_change(self, lead_id: str, from_status: str, to_status: str, time_in_hours: float) -> bool:
+        """Track lead velocity when status changes"""
+        if not self.client:
+            return False
+
+        try:
+            velocity_record = {
+                'lead_id': lead_id,
+                'from_status': from_status,
+                'to_status': to_status,
+                'time_in_status_hours': time_in_hours
+            }
+
+            self.client.table('lead_velocity_tracking').insert(velocity_record).execute()
+            return True
+        except Exception as e:
+            print(f"Error tracking velocity: {e}")
+            return False
+
+    async def get_lead_velocity_history(self, lead_id: str) -> List[Dict]:
+        """Get velocity history for a lead"""
+        if not self.client:
+            return []
+
+        try:
+            response = self.client.table('lead_velocity_tracking')\
+                .select('*')\
+                .eq('lead_id', lead_id)\
+                .order('created_at', desc=False)\
+                .execute()
+
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Error fetching velocity history: {e}")
+            return []
+
 
 # Global instance
 db = SupabaseDB()

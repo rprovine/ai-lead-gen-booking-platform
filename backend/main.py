@@ -73,6 +73,7 @@ from linkedin_sales_navigator import LinkedInSalesNavigator
 from icp_manager import get_discovery_manager, SmartLeadDiscoveryManager
 from query_manager import get_query_manager, QueryRotationManager
 from lead_enrichment_pipeline import get_enrichment_pipeline, get_auto_orchestrator
+from predictive_analytics import PredictiveAnalytics
 
 # In-memory storage for demo purposes
 in_memory_db = {
@@ -2689,6 +2690,95 @@ async def update_lead_status(lead_id: str, status_update: LeadStatusUpdate):
         "message": f"Lead status updated to {status_update.status}",
         "lead": updated_lead
     }
+
+@app.post("/api/leads/{lead_id}/predictions")
+async def generate_lead_predictions(lead_id: str):
+    """Generate predictive analytics and AI insights for a lead"""
+
+    # Fetch lead from database
+    lead_data = await supabase_db.get_lead_by_id(lead_id)
+
+    if not lead_data:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    try:
+        # Initialize predictive analytics engine
+        analytics = PredictiveAnalytics()
+
+        # Calculate conversion probability
+        conversion_result = await analytics.calculate_conversion_probability(lead_data)
+
+        # Calculate ICP match score
+        icp_result = await analytics.calculate_icp_match_score(lead_data)
+
+        # Calculate lead velocity (requires status history)
+        velocity_history = await supabase_db.get_lead_velocity_history(lead_id)
+        velocity_result = await analytics.calculate_lead_velocity(lead_data, velocity_history)
+
+        # Prepare predictions dict for recommendation
+        predictions = {
+            'conversion_probability': conversion_result.get('probability', 50),
+            'icp_match_score': icp_result.get('score', 50),
+            'velocity_score': velocity_result.get('score', 50)
+        }
+
+        # Generate recommended action
+        recommendation = await analytics.generate_recommended_action(lead_data, predictions)
+
+        # Predict best contact time
+        best_contact_time = await analytics.predict_best_contact_time(lead_data)
+
+        # Compile full predictions result
+        full_predictions = {
+            'lead_id': lead_id,
+            'conversion_probability': conversion_result.get('probability'),
+            'conversion_confidence': conversion_result.get('confidence'),
+            'conversion_factors': conversion_result.get('factors'),
+            'icp_match_score': icp_result.get('score'),
+            'icp_matching_factors': icp_result.get('matching_factors'),
+            'icp_missing_factors': icp_result.get('missing_factors'),
+            'velocity_score': velocity_result.get('score'),
+            'velocity_insight': velocity_result.get('insight'),
+            'days_in_pipeline': velocity_result.get('days_in_pipeline'),
+            'recommended_action': recommendation.get('action'),
+            'action_reasoning': recommendation.get('reasoning'),
+            'action_priority': recommendation.get('priority'),
+            'action_timing': recommendation.get('timing'),
+            'best_contact_time': best_contact_time,
+            'generated_at': datetime.now().isoformat()
+        }
+
+        # Save predictions to database
+        await supabase_db.save_lead_prediction(lead_id, full_predictions)
+
+        # Create high-priority insights if needed
+        if conversion_result.get('probability', 0) >= 80:
+            await supabase_db.save_lead_insight(
+                lead_id=lead_id,
+                insight_type='high_conversion',
+                insight_text=f"High conversion probability ({conversion_result.get('probability')}%) - prioritize outreach",
+                priority='high'
+            )
+
+        if velocity_result.get('status') == 'slow':
+            await supabase_db.save_lead_insight(
+                lead_id=lead_id,
+                insight_type='velocity_alert',
+                insight_text=velocity_result.get('insight', 'Pipeline movement has stalled'),
+                priority='medium'
+            )
+
+        return {
+            "success": True,
+            "predictions": full_predictions
+        }
+
+    except Exception as e:
+        print(f"Error generating predictions: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate predictions: {str(e)}"
+        )
 
 @app.post("/api/leads/{lead_id}/send-to-hubspot")
 async def send_lead_to_hubspot(lead_id: str):

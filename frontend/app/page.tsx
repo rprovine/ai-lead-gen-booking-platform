@@ -78,6 +78,13 @@ interface Lead {
   hubspot_synced_at?: string
   has_intelligence?: boolean
   intelligence_generated_at?: string
+  // Predictive analytics fields
+  conversion_probability?: number
+  icp_match_score?: number
+  lead_velocity_score?: number
+  recommended_action?: string
+  best_contact_time?: string
+  last_prediction_at?: string
 }
 
 interface Analytics {
@@ -212,6 +219,9 @@ export default function Dashboard() {
   const [showIntelligence, setShowIntelligence] = useState(false)
   const [intelligence, setIntelligence] = useState<SalesIntelligence | null>(null)
   const [loadingIntelligence, setLoadingIntelligence] = useState(false)
+
+  // Predictive analytics states
+  const [generatingPredictions, setGeneratingPredictions] = useState<string | null>(null)
 
   // Email template states
   const [showEmailTemplate, setShowEmailTemplate] = useState(false)
@@ -402,6 +412,23 @@ export default function Dashboard() {
       alert('Error downloading playbook. Please try again.')
     } finally {
       setDownloadingPlaybook(null)
+    }
+  }
+
+  const generatePredictions = async (leadId: string) => {
+    setGeneratingPredictions(leadId)
+    try {
+      const response = await axios.post(`${API_URL}/api/leads/${leadId}/predictions`)
+
+      // Refresh leads to show updated predictions
+      await fetchLeads()
+
+      return response.data.predictions
+    } catch (error) {
+      console.error('Error generating predictions:', error)
+      alert('Error generating predictions. Please try again.')
+    } finally {
+      setGeneratingPredictions(null)
     }
   }
 
@@ -2224,6 +2251,37 @@ export default function Dashboard() {
                                 </Badge>
                               )}
                             </div>
+
+                            {/* Predictive Analytics Display */}
+                            {lead.conversion_probability !== undefined && lead.conversion_probability > 0 && (
+                              <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                <div className="flex items-center gap-4 flex-wrap text-xs">
+                                  <div className="flex items-center gap-1">
+                                    <TrendingUp className="h-3 w-3 text-green-600" />
+                                    <span className="font-semibold text-green-900 dark:text-green-100">
+                                      {lead.conversion_probability?.toFixed(0)}% Conversion
+                                    </span>
+                                  </div>
+                                  {lead.icp_match_score !== undefined && (
+                                    <div className="flex items-center gap-1">
+                                      <Target className="h-3 w-3 text-blue-600" />
+                                      <span className="font-semibold text-blue-900 dark:text-blue-100">
+                                        {lead.icp_match_score?.toFixed(0)}% ICP Match
+                                      </span>
+                                    </div>
+                                  )}
+                                  {lead.recommended_action && (
+                                    <div className="flex items-center gap-1">
+                                      <Sparkles className="h-3 w-3 text-purple-600" />
+                                      <span className="text-purple-900 dark:text-purple-100">
+                                        {lead.recommended_action}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                               {lead.location} {lead.employee_count && `• ${lead.employee_count} employees`}
                             </p>
@@ -2401,6 +2459,24 @@ export default function Dashboard() {
                           >
                             <Brain className="mr-2 h-4 w-4" />
                             AI Intelligence
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (lead.id) {
+                                generatePredictions(lead.id)
+                              }
+                            }}
+                            className="bg-gradient-to-r from-green-600 to-emerald-600"
+                            title="Generate AI Predictions"
+                            disabled={generatingPredictions === lead.id}
+                          >
+                            {generatingPredictions === lead.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <TrendingUp className="mr-2 h-4 w-4" />
+                            )}
+                            Predict
                           </Button>
                           <Button
                             size="sm"
