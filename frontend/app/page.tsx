@@ -2209,6 +2209,35 @@ export default function Dashboard() {
                     <XCircle className="inline h-3 w-3 mr-1" />
                     Lost ({leads.filter(l => l.status === 'LOST').length})
                   </button>
+
+                  {/* Divider */}
+                  <div className="border-l border-gray-300 mx-2"></div>
+
+                  {/* HubSpot Filter */}
+                  <button
+                    onClick={() => setStatusFilter('IN_HUBSPOT')}
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
+                      statusFilter === 'IN_HUBSPOT'
+                        ? 'border-orange-600 text-orange-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Upload className="inline h-3 w-3 mr-1" />
+                    In HubSpot ({leads.filter(l => l.hubspot_company_id).length})
+                  </button>
+
+                  {/* AI Analyzed Filter */}
+                  <button
+                    onClick={() => setStatusFilter('AI_ANALYZED')}
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
+                      statusFilter === 'AI_ANALYZED'
+                        ? 'border-purple-600 text-purple-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Brain className="inline h-3 w-3 mr-1" />
+                    AI Analyzed ({leads.filter(l => l.has_intelligence).length})
+                  </button>
                 </div>
 
                 <div className="space-y-4">
@@ -2220,7 +2249,12 @@ export default function Dashboard() {
                       </p>
                     </div>
                   ) : (
-                    leads.filter(lead => statusFilter === 'ALL' || lead.status === statusFilter).map((lead, index) => (
+                    leads.filter(lead => {
+                      if (statusFilter === 'ALL') return true
+                      if (statusFilter === 'IN_HUBSPOT') return !!lead.hubspot_company_id
+                      if (statusFilter === 'AI_ANALYZED') return !!lead.has_intelligence
+                      return lead.status === statusFilter
+                    }).map((lead, index) => (
                       <motion.div
                         key={lead.id || index}
                         initial={{ opacity: 0, x: -20 }}
