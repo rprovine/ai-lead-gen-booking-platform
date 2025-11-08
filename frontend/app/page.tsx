@@ -72,6 +72,12 @@ interface Lead {
   created_at: string
   decision_makers?: DecisionMaker[]
   email_pattern?: string
+  // Tracking fields
+  hubspot_company_id?: string
+  hubspot_contact_id?: string
+  hubspot_synced_at?: string
+  has_intelligence?: boolean
+  intelligence_generated_at?: string
 }
 
 interface Analytics {
@@ -2197,23 +2203,26 @@ export default function Dashboard() {
                       >
                         <div className="flex items-center justify-between p-4">
                           <div className="flex-1">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-wrap">
                               <h3 className="font-semibold text-lg">{lead.company_name}</h3>
                               <Badge variant={lead.score > 70 ? 'default' : 'secondary'}>
                                 Score: {lead.score.toFixed(0)}
                               </Badge>
                               <Badge variant="outline">{lead.industry}</Badge>
-                              <Badge
-                                className={
-                                  lead.status === 'IN_HUBSPOT'
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-                                    : lead.status === 'RESEARCHED'
-                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'
-                                }
-                              >
-                                {lead.status === 'IN_HUBSPOT' ? 'In HubSpot' : lead.status === 'RESEARCHED' ? 'Researched' : 'New'}
-                              </Badge>
+
+                              {/* HubSpot Sync Badge */}
+                              {lead.hubspot_company_id && (
+                                <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100">
+                                  🔗 HubSpot
+                                </Badge>
+                              )}
+
+                              {/* AI Intelligence Badge */}
+                              {lead.has_intelligence && (
+                                <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100">
+                                  🧠 AI Analyzed
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                               {lead.location} {lead.employee_count && `• ${lead.employee_count} employees`}

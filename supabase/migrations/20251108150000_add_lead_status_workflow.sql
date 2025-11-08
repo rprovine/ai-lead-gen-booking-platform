@@ -15,6 +15,18 @@ BEGIN
                    WHERE table_name = 'leads' AND column_name = 'status_notes') THEN
         ALTER TABLE leads ADD COLUMN status_notes TEXT;
     END IF;
+
+    -- Add AI intelligence tracking
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'leads' AND column_name = 'has_intelligence') THEN
+        ALTER TABLE leads ADD COLUMN has_intelligence BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    -- Add intelligence generated timestamp
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'leads' AND column_name = 'intelligence_generated_at') THEN
+        ALTER TABLE leads ADD COLUMN intelligence_generated_at TIMESTAMPTZ;
+    END IF;
 END $$;
 
 -- Create an index on status for faster filtering
