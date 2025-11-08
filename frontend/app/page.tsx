@@ -7,6 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Users,
   Calendar,
   TrendingUp,
@@ -26,7 +33,11 @@ import {
   Globe,
   MapPin,
   Award,
-  Briefcase
+  Briefcase,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Circle
 } from 'lucide-react'
 import Link from 'next/link'
 import axios from 'axios'
@@ -206,6 +217,9 @@ export default function Dashboard() {
   const [showLeadDetail, setShowLeadDetail] = useState(false)
   const [detailLead, setDetailLead] = useState<Lead | null>(null)
 
+  // Lead status update state
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+
   // PDF download states
   const [downloadingPlaybook, setDownloadingPlaybook] = useState<string | null>(null)
 
@@ -213,7 +227,7 @@ export default function Dashboard() {
   const [sendingToHubSpot, setSendingToHubSpot] = useState<string | null>(null)
 
   // Status filter state
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'NEW' | 'RESEARCHED' | 'IN_HUBSPOT'>('ALL')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'OPPORTUNITY' | 'WON' | 'LOST'>('ALL')
 
   // Campaign states
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
@@ -325,6 +339,23 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error sending outreach:', error)
       alert('Error sending outreach. Please check your API configuration.')
+    }
+  }
+
+  const updateLeadStatus = async (leadId: string, newStatus: string) => {
+    setUpdatingStatus(leadId)
+    try {
+      await axios.put(`${API_URL}/api/leads/${leadId}/status`, {
+        status: newStatus
+      })
+
+      // Refresh leads to show updated status
+      await fetchLeads()
+    } catch (error) {
+      console.error('Error updating lead status:', error)
+      alert('Error updating lead status. Please try again.')
+    } finally {
+      setUpdatingStatus(null)
     }
   }
 
@@ -695,6 +726,237 @@ export default function Dashboard() {
             </Card>
           </motion.div>
         </div>
+
+        {/* Pipeline Analytics Dashboard */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-8"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-6 w-6 text-blue-600" />
+                Sales Pipeline Analytics
+              </CardTitle>
+              <CardDescription>Track lead progression through your sales funnel</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Pipeline Stages */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                {/* NEW Stage */}
+                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-gray-300">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Circle className="h-4 w-4 text-gray-500" />
+                    <h4 className="font-semibold text-sm">New</h4>
+                  </div>
+                  <div className="text-3xl font-bold text-gray-700 dark:text-gray-300">
+                    {leads.filter(l => l.status === 'NEW').length}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {leads.length > 0 ? ((leads.filter(l => l.status === 'NEW').length / leads.length) * 100).toFixed(0) : 0}% of total
+                  </p>
+                </div>
+
+                {/* CONTACTED Stage */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border-2 border-blue-300">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ArrowRight className="h-4 w-4 text-blue-500" />
+                    <h4 className="font-semibold text-sm">Contacted</h4>
+                  </div>
+                  <div className="text-3xl font-bold text-blue-700 dark:text-blue-300">
+                    {leads.filter(l => l.status === 'CONTACTED').length}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {leads.length > 0 ? ((leads.filter(l => l.status === 'CONTACTED').length / leads.length) * 100).toFixed(0) : 0}% of total
+                  </p>
+                </div>
+
+                {/* QUALIFIED Stage */}
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border-2 border-purple-300">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-4 w-4 text-purple-500" />
+                    <h4 className="font-semibold text-sm">Qualified</h4>
+                  </div>
+                  <div className="text-3xl font-bold text-purple-700 dark:text-purple-300">
+                    {leads.filter(l => l.status === 'QUALIFIED').length}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {leads.length > 0 ? ((leads.filter(l => l.status === 'QUALIFIED').length / leads.length) * 100).toFixed(0) : 0}% of total
+                  </p>
+                </div>
+
+                {/* OPPORTUNITY Stage */}
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border-2 border-yellow-300">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-4 w-4 text-yellow-500" />
+                    <h4 className="font-semibold text-sm">Opportunity</h4>
+                  </div>
+                  <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-300">
+                    {leads.filter(l => l.status === 'OPPORTUNITY').length}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {leads.length > 0 ? ((leads.filter(l => l.status === 'OPPORTUNITY').length / leads.length) * 100).toFixed(0) : 0}% of total
+                  </p>
+                </div>
+
+                {/* WON Stage */}
+                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border-2 border-green-400">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <h4 className="font-semibold text-sm">Won</h4>
+                  </div>
+                  <div className="text-3xl font-bold text-green-700 dark:text-green-300">
+                    {leads.filter(l => l.status === 'WON').length}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {leads.length > 0 ? ((leads.filter(l => l.status === 'WON').length / leads.length) * 100).toFixed(0) : 0}% of total
+                  </p>
+                </div>
+
+                {/* LOST Stage */}
+                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border-2 border-red-300">
+                  <div className="flex items-center gap-2 mb-2">
+                    <XCircle className="h-4 w-4 text-red-500" />
+                    <h4 className="font-semibold text-sm">Lost</h4>
+                  </div>
+                  <div className="text-3xl font-bold text-red-700 dark:text-red-300">
+                    {leads.filter(l => l.status === 'LOST').length}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {leads.length > 0 ? ((leads.filter(l => l.status === 'LOST').length / leads.length) * 100).toFixed(0) : 0}% of total
+                  </p>
+                </div>
+              </div>
+
+              {/* Pipeline Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Win Rate */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Win Rate</h4>
+                  <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                    {leads.filter(l => ['WON', 'LOST'].includes(l.status)).length > 0
+                      ? ((leads.filter(l => l.status === 'WON').length / leads.filter(l => ['WON', 'LOST'].includes(l.status)).length) * 100).toFixed(1)
+                      : 0}%
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {leads.filter(l => l.status === 'WON').length} won / {leads.filter(l => ['WON', 'LOST'].includes(l.status)).length} closed
+                  </p>
+                </div>
+
+                {/* Contact to Qualified */}
+                <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Contact → Qualified</h4>
+                  <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                    {leads.filter(l => ['CONTACTED', 'QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length > 0
+                      ? ((leads.filter(l => ['QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length / leads.filter(l => ['CONTACTED', 'QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length) * 100).toFixed(1)
+                      : 0}%
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Qualification rate</p>
+                </div>
+
+                {/* Qualified to Opportunity */}
+                <div className="bg-gradient-to-br from-purple-50 to-yellow-50 dark:from-purple-900/20 dark:to-yellow-900/20 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Qualified → Opportunity</h4>
+                  <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
+                    {leads.filter(l => ['QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length > 0
+                      ? ((leads.filter(l => ['OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length / leads.filter(l => ['QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length) * 100).toFixed(1)
+                      : 0}%
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Opportunity conversion</p>
+                </div>
+
+                {/* Active Pipeline Value */}
+                <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 p-4 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Active Pipeline</h4>
+                  <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+                    {leads.filter(l => ['NEW', 'CONTACTED', 'QUALIFIED', 'OPPORTUNITY'].includes(l.status)).length}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leads in progress
+                  </p>
+                </div>
+              </div>
+
+              {/* Pipeline Funnel Visualization */}
+              <div className="mt-6">
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Pipeline Funnel</h4>
+                <div className="space-y-2">
+                  {/* New → Contacted */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">New → Contacted</span>
+                      <span className="text-xs font-semibold">
+                        {leads.length > 0
+                          ? ((leads.filter(l => l.status !== 'NEW').length / leads.length) * 100).toFixed(0)
+                          : 0}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={leads.length > 0 ? (leads.filter(l => l.status !== 'NEW').length / leads.length) * 100 : 0}
+                      className="h-2"
+                    />
+                  </div>
+
+                  {/* Contacted → Qualified */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Contacted → Qualified</span>
+                      <span className="text-xs font-semibold">
+                        {leads.filter(l => ['CONTACTED', 'QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length > 0
+                          ? ((leads.filter(l => ['QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length / leads.filter(l => ['CONTACTED', 'QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length) * 100).toFixed(0)
+                          : 0}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={leads.filter(l => ['CONTACTED', 'QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length > 0
+                        ? (leads.filter(l => ['QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length / leads.filter(l => ['CONTACTED', 'QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length) * 100
+                        : 0}
+                      className="h-2"
+                    />
+                  </div>
+
+                  {/* Qualified → Opportunity */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Qualified → Opportunity</span>
+                      <span className="text-xs font-semibold">
+                        {leads.filter(l => ['QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length > 0
+                          ? ((leads.filter(l => ['OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length / leads.filter(l => ['QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length) * 100).toFixed(0)
+                          : 0}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={leads.filter(l => ['QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length > 0
+                        ? (leads.filter(l => ['OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length / leads.filter(l => ['QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length) * 100
+                        : 0}
+                      className="h-2"
+                    />
+                  </div>
+
+                  {/* Opportunity → Won */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Opportunity → Won</span>
+                      <span className="text-xs font-semibold">
+                        {leads.filter(l => ['OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length > 0
+                          ? ((leads.filter(l => l.status === 'WON').length / leads.filter(l => ['OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length) * 100).toFixed(0)
+                          : 0}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={leads.filter(l => ['OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length > 0
+                        ? (leads.filter(l => l.status === 'WON').length / leads.filter(l => ['OPPORTUNITY', 'WON', 'LOST'].includes(l.status)).length) * 100
+                        : 0}
+                      className="h-2"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Outreach Modal */}
         {showOutreach && selectedLead && (
@@ -1837,10 +2099,10 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 {/* Status Filter Tabs */}
-                <div className="mb-6 flex gap-2 border-b">
+                <div className="mb-6 flex gap-2 border-b overflow-x-auto">
                   <button
                     onClick={() => setStatusFilter('ALL')}
-                    className={`px-4 py-2 border-b-2 transition-colors ${
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'ALL'
                         ? 'border-blue-600 text-blue-600 font-medium'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -1850,33 +2112,69 @@ export default function Dashboard() {
                   </button>
                   <button
                     onClick={() => setStatusFilter('NEW')}
-                    className={`px-4 py-2 border-b-2 transition-colors ${
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'NEW'
-                        ? 'border-blue-600 text-blue-600 font-medium'
+                        ? 'border-gray-600 text-gray-600 font-medium'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
                     }`}
                   >
+                    <Circle className="inline h-3 w-3 mr-1" />
                     New ({leads.filter(l => l.status === 'NEW').length})
                   </button>
                   <button
-                    onClick={() => setStatusFilter('RESEARCHED')}
-                    className={`px-4 py-2 border-b-2 transition-colors ${
-                      statusFilter === 'RESEARCHED'
+                    onClick={() => setStatusFilter('CONTACTED')}
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
+                      statusFilter === 'CONTACTED'
                         ? 'border-blue-600 text-blue-600 font-medium'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    Researched ({leads.filter(l => l.status === 'RESEARCHED').length})
+                    <ArrowRight className="inline h-3 w-3 mr-1" />
+                    Contacted ({leads.filter(l => l.status === 'CONTACTED').length})
                   </button>
                   <button
-                    onClick={() => setStatusFilter('IN_HUBSPOT')}
-                    className={`px-4 py-2 border-b-2 transition-colors ${
-                      statusFilter === 'IN_HUBSPOT'
-                        ? 'border-blue-600 text-blue-600 font-medium'
+                    onClick={() => setStatusFilter('QUALIFIED')}
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
+                      statusFilter === 'QUALIFIED'
+                        ? 'border-purple-600 text-purple-600 font-medium'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    In HubSpot ({leads.filter(l => l.status === 'IN_HUBSPOT').length})
+                    <CheckCircle2 className="inline h-3 w-3 mr-1" />
+                    Qualified ({leads.filter(l => l.status === 'QUALIFIED').length})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('OPPORTUNITY')}
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
+                      statusFilter === 'OPPORTUNITY'
+                        ? 'border-yellow-600 text-yellow-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Target className="inline h-3 w-3 mr-1" />
+                    Opportunity ({leads.filter(l => l.status === 'OPPORTUNITY').length})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('WON')}
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
+                      statusFilter === 'WON'
+                        ? 'border-green-600 text-green-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <CheckCircle2 className="inline h-3 w-3 mr-1" />
+                    Won ({leads.filter(l => l.status === 'WON').length})
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('LOST')}
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
+                      statusFilter === 'LOST'
+                        ? 'border-red-600 text-red-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <XCircle className="inline h-3 w-3 mr-1" />
+                    Lost ({leads.filter(l => l.status === 'LOST').length})
                   </button>
                 </div>
 
@@ -2020,6 +2318,72 @@ export default function Dashboard() {
                             <Eye className="mr-2 h-4 w-4" />
                             Details
                           </Button>
+
+                          {/* Status Update Dropdown */}
+                          <Select
+                            value={lead.status}
+                            onValueChange={(newStatus) => {
+                              if (lead.id) {
+                                updateLeadStatus(lead.id, newStatus)
+                              }
+                            }}
+                            disabled={updatingStatus === lead.id}
+                          >
+                            <SelectTrigger className="h-9 w-[160px]">
+                              {updatingStatus === lead.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : (
+                                <>
+                                  {lead.status === 'NEW' && <Circle className="h-3 w-3 mr-2 text-gray-500" />}
+                                  {lead.status === 'CONTACTED' && <ArrowRight className="h-3 w-3 mr-2 text-blue-500" />}
+                                  {lead.status === 'QUALIFIED' && <CheckCircle2 className="h-3 w-3 mr-2 text-purple-500" />}
+                                  {lead.status === 'OPPORTUNITY' && <Target className="h-3 w-3 mr-2 text-yellow-500" />}
+                                  {lead.status === 'WON' && <CheckCircle2 className="h-3 w-3 mr-2 text-green-500" />}
+                                  {lead.status === 'LOST' && <XCircle className="h-3 w-3 mr-2 text-red-500" />}
+                                </>
+                              )}
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NEW">
+                                <div className="flex items-center">
+                                  <Circle className="h-3 w-3 mr-2 text-gray-500" />
+                                  New
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="CONTACTED">
+                                <div className="flex items-center">
+                                  <ArrowRight className="h-3 w-3 mr-2 text-blue-500" />
+                                  Contacted
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="QUALIFIED">
+                                <div className="flex items-center">
+                                  <CheckCircle2 className="h-3 w-3 mr-2 text-purple-500" />
+                                  Qualified
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="OPPORTUNITY">
+                                <div className="flex items-center">
+                                  <Target className="h-3 w-3 mr-2 text-yellow-500" />
+                                  Opportunity
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="WON">
+                                <div className="flex items-center">
+                                  <CheckCircle2 className="h-3 w-3 mr-2 text-green-500" />
+                                  Won
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="LOST">
+                                <div className="flex items-center">
+                                  <XCircle className="h-3 w-3 mr-2 text-red-500" />
+                                  Lost
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+
                           <Button
                             size="sm"
                             onClick={() => fetchIntelligence(lead)}

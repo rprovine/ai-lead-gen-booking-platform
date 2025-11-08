@@ -733,6 +733,27 @@ class SupabaseDB:
             print(f"Error upserting AI personalization settings: {e}")
             return None
 
+    # ============= LEAD STATUS MANAGEMENT =============
+
+    async def update_lead_status(self, lead_id: str, new_status: str, status_notes: str = None) -> Optional[Dict]:
+        """Update the status of a lead with optional notes"""
+        if not self.client:
+            return None
+
+        try:
+            update_data = {
+                'status': new_status,
+                'status_updated_at': 'now()'
+            }
+            if status_notes:
+                update_data['status_notes'] = status_notes
+
+            response = self.client.table('leads').update(update_data).eq('id', lead_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            print(f"Error updating lead status: {e}")
+            return None
+
 
 # Global instance
 db = SupabaseDB()

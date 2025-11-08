@@ -2657,6 +2657,39 @@ def _generate_hubspot_note(lead_id: str, lead_data: Dict, intelligence: Dict) ->
 
     return html
 
+# Lead Status Update Endpoint
+class LeadStatusUpdate(BaseModel):
+    status: str
+    status_notes: Optional[str] = None
+
+@app.put("/api/leads/{lead_id}/status")
+async def update_lead_status(lead_id: str, status_update: LeadStatusUpdate):
+    """Update the status of a lead in the pipeline"""
+
+    # Validate status
+    valid_statuses = ['NEW', 'CONTACTED', 'QUALIFIED', 'OPPORTUNITY', 'WON', 'LOST']
+    if status_update.status not in valid_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+        )
+
+    # Update lead status in database
+    updated_lead = await supabase_db.update_lead_status(
+        lead_id=lead_id,
+        new_status=status_update.status,
+        status_notes=status_update.status_notes
+    )
+
+    if not updated_lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    return {
+        "success": True,
+        "message": f"Lead status updated to {status_update.status}",
+        "lead": updated_lead
+    }
+
 @app.post("/api/leads/{lead_id}/send-to-hubspot")
 async def send_lead_to_hubspot(lead_id: str):
     """Send lead and intelligence data to HubSpot CRM"""
