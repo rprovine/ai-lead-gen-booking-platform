@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,11 @@ import {
   Sparkles,
   Plus,
   Trash2,
-  Save
+  Save,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -97,6 +101,24 @@ interface ICPConfig {
   actively_hiring: boolean;
   recent_tech_adoption: boolean;
   expanding_locations: boolean;
+  // Advanced filtering fields
+  naics_codes: string[];
+  sic_codes: string[];
+  business_models: string[];
+  tech_stack: string[];
+  required_technologies: string[];
+  excluded_technologies: string[];
+  ecommerce_platforms: string[];
+  crm_systems: string[];
+  marketing_automation: string[];
+  payment_processors: string[];
+  uses_social_media?: boolean;
+  has_mobile_app?: boolean;
+  has_blog?: boolean;
+  is_saas_company?: boolean;
+  funding_stage: string[];
+  certifications: string[];
+  partnerships: string[];
 }
 
 interface LeadPreferences {
@@ -182,6 +204,50 @@ const COMPANY_TYPES = ['Public', 'Private', 'Startup', 'Non-profit', 'Government
 const SENIORITY_LEVELS = ['C-Suite', 'VP', 'Director', 'Manager', 'Individual Contributor'];
 const DEPARTMENTS = ['Sales', 'Marketing', 'IT', 'Operations', 'Finance', 'HR', 'Product', 'Engineering'];
 
+// Tab descriptions and benefits
+const TAB_INFO = {
+  'business-profile': {
+    title: 'Business Profile',
+    description: 'Define your company identity to help AI understand your business and generate more relevant, targeted leads.',
+    benefits: ['Personalized lead targeting', 'Better AI-generated outreach', 'Aligned with your value proposition']
+  },
+  'icp': {
+    title: 'Ideal Customer Profile (ICP)',
+    description: 'Create detailed profiles of your perfect customers to focus on high-quality leads that match your target market.',
+    benefits: ['Higher conversion rates', 'Reduced wasted outreach', 'Multiple targeting strategies', 'Precision lead filtering']
+  },
+  'lead-preferences': {
+    title: 'Lead Generation Preferences',
+    description: 'Fine-tune how leads are discovered, scored, and delivered to match your sales capacity and quality standards.',
+    benefits: ['Control lead volume', 'Set quality thresholds', 'Optimize for your sales cycle', 'Exclude competitors']
+  },
+  'search-discovery': {
+    title: 'Search & Discovery',
+    description: 'Configure where and how the platform searches for leads across the web, news sources, and social platforms.',
+    benefits: ['Multi-source discovery', 'Geo-targeted searches', 'Industry-specific keywords', 'Real-time lead alerts']
+  },
+  'data-sources': {
+    title: 'Data Sources & API Keys',
+    description: 'Connect your API keys for AI services, contact databases, and enrichment tools to power lead generation.',
+    benefits: ['All-in-one integration hub', 'Secure credential storage', 'Connection testing', 'Enable/disable sources']
+  },
+  'notifications': {
+    title: 'Alerts & Notifications',
+    description: 'Stay informed with real-time alerts for high-quality leads via email, Slack, or Microsoft Teams.',
+    benefits: ['Instant lead notifications', 'Custom score thresholds', 'Digest scheduling', 'Multi-channel alerts']
+  },
+  'integrations': {
+    title: 'CRM & Integrations',
+    description: 'Seamlessly sync leads to your CRM, configure export formats, and set up webhooks for custom workflows.',
+    benefits: ['Auto-sync to CRM', 'Multiple export formats', 'Webhook support', 'Calendar integration']
+  },
+  'ai': {
+    title: 'AI Personalization',
+    description: 'Customize how AI researches leads, generates outreach, and personalizes communication to match your brand voice.',
+    benefits: ['Custom AI tone', 'Research depth control', 'Model selection', 'Advanced prompt templates']
+  }
+};
+
 export default function SettingsPage() {
   // Data Sources State
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
@@ -230,11 +296,82 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(true);
 
+  // Tab scroll state
+  const [activeTab, setActiveTab] = useState('business-profile');
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const [showLeftScroll, setShowLeftScroll] = useState(false);
+  const [showRightScroll, setShowRightScroll] = useState(false);
+
+  // Scroll to top state
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
   // ============= FETCH DATA =============
 
   useEffect(() => {
     fetchAllSettings();
   }, []);
+
+  // Scroll management effects
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+
+    const handleResize = () => {
+      checkTabsScroll();
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleResize);
+
+    // Initial check
+    checkTabsScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (tabsScrollRef.current) {
+      tabsScrollRef.current.addEventListener('scroll', checkTabsScroll);
+      return () => {
+        if (tabsScrollRef.current) {
+          tabsScrollRef.current.removeEventListener('scroll', checkTabsScroll);
+        }
+      };
+    }
+  }, []);
+
+  const checkTabsScroll = () => {
+    if (tabsScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsScrollRef.current;
+      setShowLeftScroll(scrollLeft > 0);
+      setShowRightScroll(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabsScrollRef.current) {
+      const scrollAmount = 200;
+      const newScrollLeft = direction === 'left'
+        ? tabsScrollRef.current.scrollLeft - scrollAmount
+        : tabsScrollRef.current.scrollLeft + scrollAmount;
+
+      tabsScrollRef.current.scrollTo({
+        left: newScrollLeft,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
   const fetchAllSettings = async () => {
     setLoading(true);
@@ -705,44 +842,100 @@ export default function SettingsPage() {
         </Link>
       </div>
 
-      <Tabs defaultValue="business-profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
-          <TabsTrigger value="business-profile">
-            <Building2 className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Business</span>
-          </TabsTrigger>
-          <TabsTrigger value="icp">
-            <Target className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">ICP</span>
-          </TabsTrigger>
-          <TabsTrigger value="lead-preferences">
-            <Sliders className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Leads</span>
-          </TabsTrigger>
-          <TabsTrigger value="search-discovery">
-            <Search className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Search</span>
-          </TabsTrigger>
-          <TabsTrigger value="data-sources">
-            <Database className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Sources</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications">
-            <Bell className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Alerts</span>
-          </TabsTrigger>
-          <TabsTrigger value="integrations">
-            <Plug className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Integrations</span>
-          </TabsTrigger>
-          <TabsTrigger value="ai">
-            <Sparkles className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">AI</span>
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Tabs with scroll arrows */}
+        <div className="relative">
+          {/* Left scroll button */}
+          {showLeftScroll && (
+            <button
+              onClick={() => scrollTabs('left')}
+              className="absolute left-0 top-0 bottom-0 z-10 w-10 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="h-6 w-6 text-gray-900 dark:text-gray-100" />
+            </button>
+          )}
+
+          {/* Right scroll button */}
+          {showRightScroll && (
+            <button
+              onClick={() => scrollTabs('right')}
+              className="absolute right-0 top-0 bottom-0 z-10 w-10 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="h-6 w-6 text-gray-900 dark:text-gray-100" />
+            </button>
+          )}
+
+          <div
+            ref={tabsScrollRef}
+            className="overflow-x-auto scrollbar-hide"
+            style={{
+              paddingLeft: showLeftScroll ? '44px' : '0',
+              paddingRight: showRightScroll ? '44px' : '0'
+            }}
+          >
+            <TabsList className="inline-flex w-auto min-w-full">
+              <TabsTrigger value="business-profile" className="flex-shrink-0">
+                <Building2 className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Business</span>
+              </TabsTrigger>
+              <TabsTrigger value="icp" className="flex-shrink-0">
+                <Target className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">ICP</span>
+              </TabsTrigger>
+              <TabsTrigger value="lead-preferences" className="flex-shrink-0">
+                <Sliders className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Leads</span>
+              </TabsTrigger>
+              <TabsTrigger value="search-discovery" className="flex-shrink-0">
+                <Search className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Search</span>
+              </TabsTrigger>
+              <TabsTrigger value="data-sources" className="flex-shrink-0">
+                <Database className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Sources</span>
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex-shrink-0">
+                <Bell className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Alerts</span>
+              </TabsTrigger>
+              <TabsTrigger value="integrations" className="flex-shrink-0">
+                <Plug className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Integrations</span>
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="flex-shrink-0">
+                <Sparkles className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">AI</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
 
         {/* Business Profile Tab */}
         <TabsContent value="business-profile">
+          {/* Info Banner */}
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                  {TAB_INFO['business-profile'].title}
+                </h3>
+                <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                  {TAB_INFO['business-profile'].description}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TAB_INFO['business-profile'].benefits.map((benefit, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                      {benefit}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Your Business Profile</CardTitle>
@@ -836,6 +1029,28 @@ export default function SettingsPage() {
 
         {/* ICP Builder Tab */}
         <TabsContent value="icp">
+          {/* Info Banner */}
+          <div className="mb-6 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-green-900 dark:text-green-100 mb-1">
+                  {TAB_INFO['icp'].title}
+                </h3>
+                <p className="text-sm text-green-800 dark:text-green-200 mb-2">
+                  {TAB_INFO['icp'].description}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TAB_INFO['icp'].benefits.map((benefit, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                      {benefit}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-4">
             {icpConfigs.length === 0 && !editingICP && (
               <Card>
@@ -863,6 +1078,19 @@ export default function SettingsPage() {
                     actively_hiring: false,
                     recent_tech_adoption: false,
                     expanding_locations: false,
+                    naics_codes: [],
+                    sic_codes: [],
+                    business_models: [],
+                    tech_stack: [],
+                    required_technologies: [],
+                    excluded_technologies: [],
+                    ecommerce_platforms: [],
+                    crm_systems: [],
+                    marketing_automation: [],
+                    payment_processors: [],
+                    funding_stage: [],
+                    certifications: [],
+                    partnerships: [],
                   })}>
                     <Plus className="mr-2 h-4 w-4" />
                     Create ICP Profile
@@ -953,6 +1181,188 @@ export default function SettingsPage() {
                     />
                   </div>
 
+                  {/* Advanced Filtering Section */}
+                  <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Advanced Filtering</h3>
+
+                    {/* Industry Classification */}
+                    <div className="space-y-4 mb-6">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Industry Classification</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>NAICS Codes (comma-separated)</Label>
+                          <Input
+                            value={editingICP.naics_codes.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, naics_codes: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="541511, 541512, 541519"
+                          />
+                          <p className="text-xs text-gray-500">North American Industry Classification System codes</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>SIC Codes (comma-separated)</Label>
+                          <Input
+                            value={editingICP.sic_codes.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, sic_codes: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="7371, 7372, 7373"
+                          />
+                          <p className="text-xs text-gray-500">Standard Industrial Classification codes</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Business Model */}
+                    <div className="space-y-2 mb-6">
+                      <Label>Business Models (comma-separated)</Label>
+                      <Input
+                        value={editingICP.business_models.join(', ')}
+                        onChange={(e) => setEditingICP({ ...editingICP, business_models: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                        placeholder="B2B, B2C, B2B2C, Marketplace, SaaS"
+                      />
+                      <p className="text-xs text-gray-500">Target specific business models</p>
+                    </div>
+
+                    {/* Technographic Filters */}
+                    <div className="space-y-4 mb-6">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Technographic Filters</h4>
+                      <div className="space-y-2">
+                        <Label>Tech Stack (comma-separated)</Label>
+                        <Input
+                          value={editingICP.tech_stack.join(', ')}
+                          onChange={(e) => setEditingICP({ ...editingICP, tech_stack: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                          placeholder="React, Python, AWS, Docker"
+                        />
+                        <p className="text-xs text-gray-500">Technologies the company uses</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Required Technologies (comma-separated)</Label>
+                          <Input
+                            value={editingICP.required_technologies.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, required_technologies: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="Salesforce, HubSpot"
+                          />
+                          <p className="text-xs text-gray-500">Must use these technologies</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Excluded Technologies (comma-separated)</Label>
+                          <Input
+                            value={editingICP.excluded_technologies.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, excluded_technologies: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="Oracle, SAP"
+                          />
+                          <p className="text-xs text-gray-500">Should not use these technologies</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Platform Filters */}
+                    <div className="space-y-4 mb-6">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Platform & Tools</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Ecommerce Platforms (comma-separated)</Label>
+                          <Input
+                            value={editingICP.ecommerce_platforms.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, ecommerce_platforms: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="Shopify, WooCommerce, Magento"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>CRM Systems (comma-separated)</Label>
+                          <Input
+                            value={editingICP.crm_systems.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, crm_systems: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="Salesforce, HubSpot, Pipedrive"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Marketing Automation (comma-separated)</Label>
+                          <Input
+                            value={editingICP.marketing_automation.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, marketing_automation: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="Marketo, Pardot, ActiveCampaign"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Payment Processors (comma-separated)</Label>
+                          <Input
+                            value={editingICP.payment_processors.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, payment_processors: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="Stripe, PayPal, Square"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Digital Presence & Company Attributes */}
+                    <div className="space-y-4 mb-6">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Digital Presence & Attributes</h4>
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={editingICP.uses_social_media ?? false}
+                            onCheckedChange={(checked) => setEditingICP({ ...editingICP, uses_social_media: checked })}
+                          />
+                          <Label>Social Media</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={editingICP.has_mobile_app ?? false}
+                            onCheckedChange={(checked) => setEditingICP({ ...editingICP, has_mobile_app: checked })}
+                          />
+                          <Label>Mobile App</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={editingICP.has_blog ?? false}
+                            onCheckedChange={(checked) => setEditingICP({ ...editingICP, has_blog: checked })}
+                          />
+                          <Label>Has Blog</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={editingICP.is_saas_company ?? false}
+                            onCheckedChange={(checked) => setEditingICP({ ...editingICP, is_saas_company: checked })}
+                          />
+                          <Label>SaaS Company</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Company Stage & Credentials */}
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Company Stage & Credentials</h4>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>Funding Stage (comma-separated)</Label>
+                          <Input
+                            value={editingICP.funding_stage.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, funding_stage: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="Seed, Series A, Series B"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Certifications (comma-separated)</Label>
+                          <Input
+                            value={editingICP.certifications.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, certifications: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="ISO 27001, SOC2, HIPAA"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Partnerships (comma-separated)</Label>
+                          <Input
+                            value={editingICP.partnerships.join(', ')}
+                            onChange={(e) => setEditingICP({ ...editingICP, partnerships: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                            placeholder="AWS Partner, Microsoft Partner"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex gap-2">
                     <Button onClick={saveICP} disabled={savingICP}>
                       {savingICP ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save ICP'}
@@ -967,6 +1377,28 @@ export default function SettingsPage() {
 
         {/* Lead Preferences Tab */}
         <TabsContent value="lead-preferences">
+          {/* Info Banner */}
+          <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-lg">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">
+                  {TAB_INFO['lead-preferences'].title}
+                </h3>
+                <p className="text-sm text-purple-800 dark:text-purple-200 mb-2">
+                  {TAB_INFO['lead-preferences'].description}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TAB_INFO['lead-preferences'].benefits.map((benefit, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                      {benefit}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Lead Generation Preferences</CardTitle>
@@ -1026,6 +1458,28 @@ export default function SettingsPage() {
 
         {/* Search & Discovery Tab */}
         <TabsContent value="search-discovery">
+          {/* Info Banner */}
+          <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-orange-900 dark:text-orange-100 mb-1">
+                  {TAB_INFO['search-discovery'].title}
+                </h3>
+                <p className="text-sm text-orange-800 dark:text-orange-200 mb-2">
+                  {TAB_INFO['search-discovery'].description}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TAB_INFO['search-discovery'].benefits.map((benefit, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200">
+                      {benefit}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Search & Discovery Settings</CardTitle>
@@ -1068,6 +1522,28 @@ export default function SettingsPage() {
 
         {/* Data Sources Tab */}
         <TabsContent value="data-sources" className="space-y-6">
+          {/* Info Banner */}
+          <div className="p-4 bg-cyan-50 dark:bg-cyan-950 border border-cyan-200 dark:border-cyan-800 rounded-lg">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-cyan-600 dark:text-cyan-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-cyan-900 dark:text-cyan-100 mb-1">
+                  {TAB_INFO['data-sources'].title}
+                </h3>
+                <p className="text-sm text-cyan-800 dark:text-cyan-200 mb-2">
+                  {TAB_INFO['data-sources'].description}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TAB_INFO['data-sources'].benefits.map((benefit, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200">
+                      {benefit}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {Object.entries(categories).map(([categoryName, sourceTypes]) => {
             const categorySources = dataSources.filter(s => sourceTypes.includes(s.source_type));
             if (categorySources.length === 0) return null;
@@ -1085,6 +1561,28 @@ export default function SettingsPage() {
 
         {/* Notifications Tab */}
         <TabsContent value="notifications">
+          {/* Info Banner */}
+          <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                  {TAB_INFO['notifications'].title}
+                </h3>
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
+                  {TAB_INFO['notifications'].description}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TAB_INFO['notifications'].benefits.map((benefit, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200">
+                      {benefit}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Notification Settings</CardTitle>
@@ -1161,6 +1659,28 @@ export default function SettingsPage() {
 
         {/* Integrations Tab */}
         <TabsContent value="integrations">
+          {/* Info Banner */}
+          <div className="mb-6 p-4 bg-pink-50 dark:bg-pink-950 border border-pink-200 dark:border-pink-800 rounded-lg">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-pink-600 dark:text-pink-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-pink-900 dark:text-pink-100 mb-1">
+                  {TAB_INFO['integrations'].title}
+                </h3>
+                <p className="text-sm text-pink-800 dark:text-pink-200 mb-2">
+                  {TAB_INFO['integrations'].description}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TAB_INFO['integrations'].benefits.map((benefit, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs bg-pink-100 dark:bg-pink-900 text-pink-800 dark:text-pink-200">
+                      {benefit}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Integration Settings</CardTitle>
@@ -1222,6 +1742,28 @@ export default function SettingsPage() {
 
         {/* AI Personalization Tab */}
         <TabsContent value="ai">
+          {/* Info Banner */}
+          <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-indigo-900 dark:text-indigo-100 mb-1">
+                  {TAB_INFO['ai'].title}
+                </h3>
+                <p className="text-sm text-indigo-800 dark:text-indigo-200 mb-2">
+                  {TAB_INFO['ai'].description}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {TAB_INFO['ai'].benefits.map((benefit, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                      {benefit}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>AI Personalization</CardTitle>
@@ -1287,6 +1829,17 @@ export default function SettingsPage() {
         </TabsContent>
 
       </Tabs>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 z-50 p-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-all duration-200 hover:scale-110"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      )}
     </div>
   );
 }

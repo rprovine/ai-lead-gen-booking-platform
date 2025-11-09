@@ -7,6 +7,106 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-11-09
+
+### Added
+- **Advanced ICP Filtering** - Comprehensive targeting capabilities for precise lead generation:
+  - **Industry Classification**: NAICS codes and SIC codes for precise industry targeting
+  - **Business Models**: Filter by B2B, B2C, B2B2C, Marketplace, SaaS, and other business models
+  - **Technographic Filters**: Target companies based on their technology stack
+    - General tech stack (React, Python, AWS, Docker, etc.)
+    - Required technologies (must-have tools)
+    - Excluded technologies (technologies to avoid)
+  - **Platform & Tools**: Filter by specific platforms and systems
+    - Ecommerce platforms (Shopify, WooCommerce, Magento)
+    - CRM systems (Salesforce, HubSpot, Pipedrive)
+    - Marketing automation (Marketo, Pardot, ActiveCampaign)
+    - Payment processors (Stripe, PayPal, Square)
+  - **Digital Presence**: Boolean filters for online presence
+    - Social media usage
+    - Mobile app availability
+    - Blog presence
+    - SaaS company designation
+  - **Company Stage & Credentials**: Target companies by maturity and certifications
+    - Funding stage (Seed, Series A, Series B, etc.)
+    - Certifications (ISO 27001, SOC2, HIPAA)
+    - Strategic partnerships (AWS Partner, Microsoft Partner)
+
+### Improved
+- **ICP Builder UI**: Enhanced ICP configuration interface with organized sections
+  - Added "Advanced Filtering" section with clear subsections
+  - Grouped related fields with descriptive headers
+  - Added helpful placeholder text and descriptions for each field
+  - Implemented toggle switches for boolean presence filters
+  - Clean visual hierarchy with borders and spacing
+
+### Changed
+- Updated `icp_config` table schema with 17 new JSONB and boolean columns
+- Extended TypeScript `ICPConfig` interface with advanced filtering fields
+- Updated Pydantic `ICPConfigCreate` model to handle new fields
+- Enhanced default ICP initialization with all new field defaults
+
+### Database
+- New migration: `20251109120000_add_advanced_icp_filters.sql`
+  - Added columns: naics_codes, sic_codes, business_models, tech_stack, required_technologies, excluded_technologies
+  - Added columns: ecommerce_platforms, crm_systems, marketing_automation, payment_processors
+  - Added columns: uses_social_media, has_mobile_app, has_blog, is_saas_company
+  - Added columns: funding_stage, certifications, partnerships
+  - All JSONB arrays default to empty arrays, boolean fields default to NULL
+
+### Technical Details
+- Frontend: React form fields with comma-separated input handling for arrays
+- Backend: Pydantic models automatically validate and serialize JSONB fields
+- Database: PostgreSQL JSONB fields provide flexible array storage
+- UI: Organized into 5 subsections (Industry, Business Model, Technographic, Platforms, Digital Presence, Company Stage)
+
+## [0.2.2] - 2025-11-09
+
+### Improved
+- **Enhanced Settings Page UX**:
+  - Added prominent horizontal scroll arrow buttons for settings tabs navigation
+  - Implemented solid backgrounds with borders and shadows for better arrow visibility
+  - Added dynamic padding to prevent text overlap with scroll arrows
+  - Smart show/hide logic for arrows based on scroll position
+  - Smooth scroll animations when clicking arrows
+  - Responsive behavior adapting to screen size changes
+
+- **Settings Tab Information Banners**:
+  - Added color-coded info banners for each of the 8 settings tabs
+  - Comprehensive descriptions explaining the purpose of each section
+  - Bullet-pointed benefits highlighting value for each configuration area
+  - Visual hierarchy with icons and badges for better information consumption
+  - Consistent design pattern across all tabs for professional appearance
+
+- **Settings Navigation Improvements**:
+  - Added floating scroll-to-top button appearing after scrolling 400px
+  - Controlled tab state management with active tab tracking
+  - Improved mobile responsiveness with flex-shrink-0 for tab buttons
+  - Enhanced touch targets and keyboard navigation support
+
+- **Information Architecture**:
+  - Business Profile: Personalization benefits highlighted
+  - ICP Builder: Conversion optimization focus
+  - Lead Preferences: Quality control emphasis
+  - Search & Discovery: Multi-source strategy
+  - Data Sources: Security and integration benefits
+  - Notifications: Real-time alerts advantages
+  - Integrations: Workflow automation benefits
+  - AI Personalization: Customization capabilities
+
+### Changed
+- Settings tabs now use controlled component pattern with active state
+- TabsList changed from grid layout to inline-flex for better scroll behavior
+- Added useRef and useState hooks for scroll management
+- Enhanced with ChevronLeft, ChevronRight, ArrowUp, and Info icons
+
+### Technical Details
+- Implemented horizontal scroll detection with scroll event listeners
+- Added resize event listeners for responsive arrow visibility
+- Created TAB_INFO constant with comprehensive metadata for all 8 tabs
+- Reusable info banner pattern with consistent color schemes
+- Mobile-first responsive design with proper touch handling
+
 ## [0.2.1] - 2025-11-09
 
 ### Improved
@@ -145,6 +245,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-time analytics dashboard
 - Automated daily discovery with cron jobs
 
-[Unreleased]: https://github.com/yourusername/ai-lead-gen-booking-platform/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/yourusername/ai-lead-gen-booking-platform/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/yourusername/ai-lead-gen-booking-platform/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/yourusername/ai-lead-gen-booking-platform/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/yourusername/ai-lead-gen-booking-platform/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/yourusername/ai-lead-gen-booking-platform/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/yourusername/ai-lead-gen-booking-platform/releases/tag/v0.1.0

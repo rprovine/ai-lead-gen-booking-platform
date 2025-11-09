@@ -14,7 +14,15 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 
 ### Settings & Configuration 🆕
 - **Business Profile**: Configure your company information, value proposition, and sales cycle
-- **ICP Builder**: Create detailed ideal customer profiles with employee count, industries, geography, and decision maker criteria
+- **ICP Builder**: Create detailed ideal customer profiles with comprehensive targeting criteria:
+  - **Basic Demographics**: Employee count, revenue, company age, industries, geography
+  - **Industry Classification**: NAICS codes and SIC codes for precise industry targeting
+  - **Business Models**: Filter by B2B, B2C, B2B2C, Marketplace, SaaS models
+  - **Technographic Filters**: Target by tech stack, required/excluded technologies
+  - **Platform Usage**: Filter by ecommerce platforms, CRM systems, marketing automation, payment processors
+  - **Digital Presence**: Social media, mobile apps, blogs, SaaS designation
+  - **Company Stage**: Funding rounds, certifications (ISO, SOC2), strategic partnerships
+  - **Decision Makers**: Titles, seniority levels, departments, multiple decision maker criteria
 - **Lead Preferences**: Set batch sizes, scoring thresholds, and quality vs quantity preferences
 - **Search & Discovery**: Configure search keywords, priority websites, and territories
 - **Data Source Management**: Manage API keys for 13+ external data sources (Apollo, Hunter, Perplexity, etc.)

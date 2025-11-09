@@ -3752,6 +3752,24 @@ class ICPConfigCreate(BaseModel):
     actively_hiring: Optional[bool] = False
     recent_tech_adoption: Optional[bool] = False
     expanding_locations: Optional[bool] = False
+    # Advanced filtering fields
+    naics_codes: Optional[List[str]] = []
+    sic_codes: Optional[List[str]] = []
+    business_models: Optional[List[str]] = []
+    tech_stack: Optional[List[str]] = []
+    required_technologies: Optional[List[str]] = []
+    excluded_technologies: Optional[List[str]] = []
+    ecommerce_platforms: Optional[List[str]] = []
+    crm_systems: Optional[List[str]] = []
+    marketing_automation: Optional[List[str]] = []
+    payment_processors: Optional[List[str]] = []
+    uses_social_media: Optional[bool] = None
+    has_mobile_app: Optional[bool] = None
+    has_blog: Optional[bool] = None
+    is_saas_company: Optional[bool] = None
+    funding_stage: Optional[List[str]] = []
+    certifications: Optional[List[str]] = []
+    partnerships: Optional[List[str]] = []
 
 class LeadPreferencesUpdate(BaseModel):
     organization_id: Optional[str] = 'default'
