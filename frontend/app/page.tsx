@@ -1514,7 +1514,7 @@ export default function Dashboard() {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h2 className="text-2xl font-bold">Create New Campaign</h2>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">Set up an automated outreach campaign</p>
+                  <p className="text-gray-600 dark:text-gray-400 mt-1">Set up automated multi-touch outreach with AI-personalized emails & SMS for targeted leads</p>
                 </div>
                 <Button onClick={() => setShowCreateCampaign(false)} variant="ghost" size="sm">✕</Button>
               </div>
@@ -2794,7 +2794,7 @@ export default function Dashboard() {
                 <div className="flex justify-between items-center">
                   <div>
                     <CardTitle>Outreach Campaigns</CardTitle>
-                    <CardDescription>Automated multi-channel outreach sequences</CardDescription>
+                    <CardDescription>Create automated email & SMS sequences to contact multiple leads at once with AI-personalized messaging</CardDescription>
                   </div>
                   <Button
                     onClick={() => setShowCreateCampaign(true)}
@@ -2808,18 +2808,108 @@ export default function Dashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {campaigns.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Target className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        No campaigns yet. Create your first outreach campaign!
-                      </p>
-                      <Button
-                        onClick={() => setShowCreateCampaign(true)}
-                        variant="outline"
-                      >
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Get Started
-                      </Button>
+                    <div className="max-w-3xl mx-auto">
+                      {/* Header */}
+                      <div className="text-center py-8">
+                        <Target className="h-16 w-16 mx-auto text-blue-500 mb-4" />
+                        <h3 className="text-2xl font-bold mb-2">Automate Your Lead Outreach</h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-8">
+                          Create multi-channel campaigns to automatically reach out to qualified leads
+                        </p>
+                      </div>
+
+                      {/* Benefits Grid */}
+                      <div className="grid md:grid-cols-3 gap-4 mb-8">
+                        <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                          <Zap className="h-8 w-8 text-blue-600 mb-2" />
+                          <h4 className="font-semibold mb-1">Save Time</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Automatically contact multiple leads at once instead of one-by-one
+                          </p>
+                        </div>
+                        <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                          <Target className="h-8 w-8 text-green-600 mb-2" />
+                          <h4 className="font-semibold mb-1">Target Precisely</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Filter by industry, lead score, or other criteria to reach the right prospects
+                          </p>
+                        </div>
+                        <div className="p-4 border rounded-lg bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+                          <TrendingUp className="h-8 w-8 text-purple-600 mb-2" />
+                          <h4 className="font-semibold mb-1">Track Performance</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Monitor opens, replies, and conversions to optimize your messaging
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* How It Works */}
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-8">
+                        <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-blue-600" />
+                          How Campaigns Work
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                              1
+                            </div>
+                            <div>
+                              <p className="font-medium">Create Campaign & Set Filters</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Choose which leads to target (by industry, score, etc.) and select channels (email, SMS)
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                              2
+                            </div>
+                            <div>
+                              <p className="font-medium">AI Generates Personalized Messages</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                System creates custom outreach for each lead based on their company intelligence
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                              3
+                            </div>
+                            <div>
+                              <p className="font-medium">Automated Multi-Touch Sequences</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Leads receive follow-ups automatically over time (e.g., email day 1, SMS day 3)
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                              4
+                            </div>
+                            <div>
+                              <p className="font-medium">Track Results & Optimize</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Monitor who opens, replies, and converts to improve future campaigns
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CTA */}
+                      <div className="text-center">
+                        <Button
+                          onClick={() => setShowCreateCampaign(true)}
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6 text-lg"
+                        >
+                          <Sparkles className="mr-2 h-5 w-5" />
+                          Create Your First Campaign
+                        </Button>
+                        <p className="text-xs text-gray-500 mt-3">
+                          Tip: Generate AI Intelligence for leads first to enable personalized messaging
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     campaigns.map((campaign) => (
