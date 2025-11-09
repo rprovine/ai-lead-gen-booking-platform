@@ -59,6 +59,15 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 - **Multi-Channel Campaigns**: Email, SMS, and LinkedIn outreach orchestration
 - **HubSpot Integration**: Automatic CRM synchronization with leads, contacts, companies, and formatted intelligence notes
 
+### Campaign Management 🆕
+- **Automated Multi-Touch Outreach**: Create campaigns to contact multiple leads simultaneously with AI-personalized messaging
+- **Multi-Channel Support**: Orchestrate outreach across email, SMS, and LinkedIn in unified campaigns
+- **Smart Targeting**: Filter leads by industry, score range, and other ICP criteria for precise campaign targeting
+- **Campaign Status Tracking**: Monitor campaigns through draft, active, paused, and completed states
+- **Performance Analytics**: Track total leads, contacted count, opens, replies, and conversions for each campaign
+- **AI Personalization**: Each lead receives personalized messaging based on their intelligence data and company profile
+- **Guided Workflow**: Clear explanatory UI showing benefits, workflow steps, and prerequisites for successful campaigns
+
 ### Analytics & Automation
 - **Real-time Analytics**: Dashboard showing leads, conversions, and revenue potential
 - **Automated Daily Discovery**: Cron job system for hands-free lead generation
@@ -281,7 +290,32 @@ After generating AI Intelligence for a lead, click the **"Predict"** button to g
 
 The Predict button is only available after AI Intelligence has been generated to ensure predictions are based on comprehensive data.
 
-### 7. Book Appointments
+### 7. Create Outreach Campaigns
+
+Navigate to the **Campaigns** tab to automate multi-lead outreach:
+
+**Benefits:**
+- Save time by contacting multiple leads at once instead of one-by-one
+- Target precisely with ICP-based filters (industry, score, location)
+- Track performance with open rates, reply rates, and conversion metrics
+
+**How Campaigns Work:**
+1. **Create Campaign** - Set campaign name, description, and select target filters (industry, score range)
+2. **Choose Channels** - Select email, SMS, and/or LinkedIn for multi-touch outreach
+3. **AI Personalization** - System automatically personalizes each message using lead intelligence data
+4. **Launch & Track** - Start the campaign and monitor real-time analytics (contacted, opened, replied, converted)
+
+**Prerequisites:**
+- Generate AI Intelligence for leads first to enable personalized messaging
+- Configure SendGrid (email), Twilio (SMS), or LinkedIn integration in Settings
+
+**Campaign Status:**
+- **Draft**: Campaign created but not yet started
+- **Active**: Currently sending messages to leads
+- **Paused**: Temporarily stopped, can be resumed
+- **Completed**: All leads have been contacted
+
+### 8. Book Appointments
 
 Click **"Book Meeting"** to schedule an appointment at your Honolulu office. The system will:
 - Find available time slots
@@ -289,7 +323,7 @@ Click **"Book Meeting"** to schedule an appointment at your Honolulu office. The
 - Send confirmations to the lead
 - Add reminders
 
-### 8. Monitor Analytics
+### 9. Monitor Analytics
 
 The dashboard provides comprehensive metrics:
 
@@ -308,7 +342,7 @@ The dashboard provides comprehensive metrics:
 - Active pipeline count
 - Visual funnel showing stage-to-stage progression
 
-### 9. Automated Daily Discovery (Optional)
+### 10. Automated Daily Discovery (Optional)
 
 Set up a cron job for hands-free lead generation:
 ```bash
@@ -342,12 +376,17 @@ Once the backend is running, visit http://localhost:8000/docs for interactive AP
 - `POST /api/leads/{lead_id}/send-to-hubspot` - Sync lead to HubSpot CRM
 
 **Outreach & Campaigns:**
-- `POST /api/outreach/generate` - Generate personalized outreach
+- `POST /api/outreach/generate` - Generate personalized outreach (email, SMS, LinkedIn)
 - `POST /api/outreach/send` - Send outreach message
-- `POST /api/campaigns` - Create outreach campaign
-- `GET /api/campaigns` - Get all campaigns
-- `POST /api/campaigns/{campaign_id}/leads` - Add leads to campaign
-- `POST /api/campaigns/{campaign_id}/start` - Start campaign
+- `POST /api/campaigns` - Create new campaign with name, description, target filters, and channels
+- `GET /api/campaigns` - Get all campaigns with performance metrics
+- `GET /api/campaigns/{campaign_id}` - Get campaign details with lead list
+- `PUT /api/campaigns/{campaign_id}` - Update campaign (name, description, filters, status)
+- `DELETE /api/campaigns/{campaign_id}` - Delete campaign
+- `POST /api/campaigns/{campaign_id}/leads` - Add leads to campaign (manual or filter-based)
+- `POST /api/campaigns/{campaign_id}/start` - Launch campaign and begin outreach
+- `POST /api/campaigns/{campaign_id}/pause` - Pause active campaign
+- `POST /api/campaigns/{campaign_id}/resume` - Resume paused campaign
 
 **Appointments:**
 - `GET /api/appointments/slots` - Get available appointment slots
