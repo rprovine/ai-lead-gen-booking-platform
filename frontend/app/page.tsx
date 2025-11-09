@@ -2998,16 +2998,101 @@ export default function Dashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Scheduled Appointments</CardTitle>
-                <CardDescription>Upcoming meetings with your leads</CardDescription>
+                <CardDescription>View and manage all scheduled meetings with your leads</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {appointments.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Calendar className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-600 dark:text-gray-400">
-                        No appointments scheduled yet. Book an appointment from the Leads tab!
-                      </p>
+                    <div className="max-w-3xl mx-auto">
+                      {/* Header */}
+                      <div className="text-center py-8">
+                        <Calendar className="h-16 w-16 mx-auto text-blue-500 mb-4" />
+                        <h3 className="text-2xl font-bold mb-2">Schedule Meetings with Qualified Leads</h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-8">
+                          Book appointments to move high-potential leads through your sales pipeline
+                        </p>
+                      </div>
+
+                      {/* Benefits Grid */}
+                      <div className="grid md:grid-cols-3 gap-4 mb-8">
+                        <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                          <Calendar className="h-8 w-8 text-blue-600 mb-2" />
+                          <h4 className="font-semibold mb-1">Stay Organized</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            All appointments in one place with lead details and contact info
+                          </p>
+                        </div>
+                        <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                          <Building2 className="h-8 w-8 text-green-600 mb-2" />
+                          <h4 className="font-semibold mb-1">Multiple Formats</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Choose in-person, virtual, or phone meetings based on lead preference
+                          </p>
+                        </div>
+                        <div className="p-4 border rounded-lg bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+                          <TrendingUp className="h-8 w-8 text-purple-600 mb-2" />
+                          <h4 className="font-semibold mb-1">Track Status</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Monitor scheduled, completed, and cancelled appointments
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* How It Works */}
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-8">
+                        <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-blue-600" />
+                          How to Book an Appointment
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">1</div>
+                            <div>
+                              <p className="font-medium">Go to the Leads tab</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Find a qualified lead you want to meet with</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">2</div>
+                            <div>
+                              <p className="font-medium">Click "Book Meeting" on the lead card</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Opens the appointment booking modal with lead details pre-filled</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">3</div>
+                            <div>
+                              <p className="font-medium">Choose date, time, and format</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Select meeting type: in-person (Honolulu office), virtual, or phone</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">4</div>
+                            <div>
+                              <p className="font-medium">Add notes and confirm</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Appointment appears here with full lead context and contact details</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CTA */}
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                          💡 <strong>Tip:</strong> Focus on leads with high scores (70+) or those in "QUALIFIED" or "OPPORTUNITY" status for the best conversion rates
+                        </p>
+                        <Button
+                          onClick={() => {
+                            // Switch to Leads tab
+                            const leadsTab = document.querySelector('[value="leads"]') as HTMLElement
+                            if (leadsTab) leadsTab.click()
+                          }}
+                          className="bg-gradient-to-r from-blue-600 to-purple-600"
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          Go to Leads Tab
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     appointments.map((appointment, index) => (
