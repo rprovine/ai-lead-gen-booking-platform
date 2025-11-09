@@ -37,6 +37,8 @@ import {
   ArrowRight,
   CheckCircle2,
   XCircle,
+  Zap,
+  Clock,
   Circle
 } from 'lucide-react'
 import Link from 'next/link'
@@ -53,6 +55,27 @@ interface DecisionMaker {
   linkedin?: string
   confidence?: number
   source?: string
+}
+
+interface PredictionDetails {
+  conversion_probability?: number
+  conversion_confidence?: number
+  conversion_factors?: {
+    positive?: string[]
+    negative?: string[]
+  }
+  icp_match_score?: number
+  icp_matching_factors?: string[]
+  icp_missing_factors?: string[]
+  velocity_score?: number
+  velocity_insight?: string
+  days_in_pipeline?: number
+  recommended_action?: string
+  action_reasoning?: string
+  action_priority?: string
+  action_timing?: string
+  best_contact_time?: string
+  generated_at?: string
 }
 
 interface Lead {
@@ -85,6 +108,8 @@ interface Lead {
   recommended_action?: string
   best_contact_time?: string
   last_prediction_at?: string
+  // Full prediction details
+  prediction_details?: PredictionDetails
 }
 
 interface Analytics {
@@ -426,10 +451,18 @@ export default function Dashboard() {
     try {
       const response = await axios.post(`${API_URL}/api/leads/${leadId}/predictions`)
 
-      // Refresh leads to show updated predictions
+      // Store prediction details on the lead object for immediate display
+      const predictions = response.data.predictions
+      setLeads(prev => prev.map(lead =>
+        lead.id === leadId
+          ? { ...lead, prediction_details: predictions }
+          : lead
+      ))
+
+      // Refresh leads to show updated predictions from database
       await fetchLeads()
 
-      return response.data.predictions
+      return predictions
     } catch (error) {
       console.error('Error generating predictions:', error)
       alert('Error generating predictions. Please try again.')
@@ -2296,35 +2329,183 @@ export default function Dashboard() {
                               )}
                             </div>
 
-                            {/* Predictive Analytics Display */}
-                            {lead.conversion_probability !== undefined && lead.conversion_probability > 0 && (
-                              <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                                <div className="flex items-center gap-4 flex-wrap text-xs">
-                                  <div className="flex items-center gap-1">
-                                    <TrendingUp className="h-3 w-3 text-green-600" />
-                                    <span className="font-semibold text-green-900 dark:text-green-100">
-                                      {lead.conversion_probability?.toFixed(0)}% Conversion
-                                    </span>
-                                  </div>
-                                  {lead.icp_match_score !== undefined && (
+                            {/* Predictive Analytics Display - Enhanced */}
+                            {(lead.prediction_details || lead.conversion_probability !== undefined) && (() => {
+                              // Use prediction_details if available, otherwise fall back to top-level fields
+                              const pd = lead.prediction_details || lead
+                              return (
+                              <div className="mt-3 p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                {/* Header */}
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-green-300 dark:border-green-700">
+                                  <TrendingUp className="h-4 w-4 text-green-600" />
+                                  <h4 className="text-sm font-semibold text-green-900 dark:text-green-100">AI Predictive Analytics</h4>
+                                </div>
+
+                                {/* Summary Row */}
+                                <div className="flex items-center gap-4 flex-wrap text-xs mb-3">
+                                  {pd.conversion_probability !== undefined && (
+                                    <div className="flex items-center gap-1">
+                                      <TrendingUp className="h-3 w-3 text-green-600" />
+                                      <span className="font-semibold text-green-900 dark:text-green-100">
+                                        {pd.conversion_probability.toFixed(0)}% Conversion
+                                      </span>
+                                      {pd.conversion_confidence && (
+                                        <span className="text-gray-600 dark:text-gray-400 ml-1">
+                                          ({pd.conversion_confidence.toFixed(0)}% confident)
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {pd.icp_match_score !== undefined && (
                                     <div className="flex items-center gap-1">
                                       <Target className="h-3 w-3 text-blue-600" />
                                       <span className="font-semibold text-blue-900 dark:text-blue-100">
-                                        {lead.icp_match_score?.toFixed(0)}% ICP Match
+                                        {pd.icp_match_score.toFixed(0)}% ICP Match
                                       </span>
                                     </div>
                                   )}
-                                  {lead.recommended_action && (
+                                  {pd.velocity_score !== undefined && (
                                     <div className="flex items-center gap-1">
-                                      <Sparkles className="h-3 w-3 text-purple-600" />
-                                      <span className="text-purple-900 dark:text-purple-100">
-                                        {lead.recommended_action}
+                                      <Zap className="h-3 w-3 text-yellow-600" />
+                                      <span className="font-semibold text-yellow-900 dark:text-yellow-100">
+                                        {pd.velocity_score.toFixed(0)} Velocity
                                       </span>
                                     </div>
                                   )}
                                 </div>
+
+                                {/* Conversion Factors */}
+                                {pd.conversion_factors && (
+                                  <div className="mb-3">
+                                    {pd.conversion_factors.positive && pd.conversion_factors.positive.length > 0 && (
+                                      <div className="mb-2">
+                                        <div className="text-xs font-semibold text-green-700 dark:text-green-300 mb-1">
+                                          ✓ Positive Factors:
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                          {pd.conversion_factors.positive.map((factor, idx) => (
+                                            <span key={idx} className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded">
+                                              {factor}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {pd.conversion_factors.negative && pd.conversion_factors.negative.length > 0 && (
+                                      <div className="mb-2">
+                                        <div className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">
+                                          ⚠ Risk Factors:
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                          {pd.conversion_factors.negative.map((factor, idx) => (
+                                            <span key={idx} className="text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded">
+                                              {factor}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* ICP Factors */}
+                                {(pd.icp_matching_factors || pd.icp_missing_factors) && (
+                                  <div className="mb-3 pb-3 border-b border-green-200 dark:border-green-800">
+                                    {pd.icp_matching_factors && pd.icp_matching_factors.length > 0 && (
+                                      <div className="mb-2">
+                                        <div className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">
+                                          ✓ ICP Matches:
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                          {pd.icp_matching_factors.map((factor, idx) => (
+                                            <span key={idx} className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded">
+                                              {factor}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {pd.icp_missing_factors && pd.icp_missing_factors.length > 0 && (
+                                      <div>
+                                        <div className="text-xs font-semibold text-orange-700 dark:text-orange-300 mb-1">
+                                          ⚠ Missing:
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                          {pd.icp_missing_factors.map((factor, idx) => (
+                                            <span key={idx} className="text-xs px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 rounded">
+                                              {factor}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Velocity Insight */}
+                                {pd.velocity_insight && (
+                                  <div className="mb-3 pb-3 border-b border-green-200 dark:border-green-800">
+                                    <div className="text-xs">
+                                      <span className="font-semibold text-yellow-700 dark:text-yellow-300">Pipeline Velocity:</span>
+                                      <span className="text-gray-700 dark:text-gray-300 ml-1">{pd.velocity_insight}</span>
+                                      {pd.days_in_pipeline !== undefined && (
+                                        <span className="text-gray-600 dark:text-gray-400 ml-1">
+                                          ({pd.days_in_pipeline} days in pipeline)
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Recommended Action */}
+                                {pd.recommended_action && (
+                                  <div className="mb-3">
+                                    <div className="flex items-start gap-2">
+                                      <Sparkles className="h-3 w-3 text-purple-600 mt-0.5 flex-shrink-0" />
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">
+                                            {pd.recommended_action}
+                                          </span>
+                                          {pd.action_priority && (
+                                            <span className={`text-xs px-2 py-0.5 rounded ${
+                                              pd.action_priority === 'critical'
+                                                ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                                                : pd.action_priority === 'high'
+                                                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
+                                                : pd.action_priority === 'medium'
+                                                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
+                                                : 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200'
+                                            }`}>
+                                              {pd.action_priority}
+                                            </span>
+                                          )}
+                                          {pd.action_timing && (
+                                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                                              {pd.action_timing}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {pd.action_reasoning && (
+                                          <div className="text-xs text-gray-700 dark:text-gray-300">
+                                            {pd.action_reasoning}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Best Contact Time */}
+                                {pd.best_contact_time && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <Clock className="h-3 w-3 text-indigo-600" />
+                                    <span className="font-semibold text-indigo-700 dark:text-indigo-300">Best Contact Time:</span>
+                                    <span className="text-gray-700 dark:text-gray-300">{pd.best_contact_time}</span>
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            )})()}
 
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                               {lead.location} {lead.employee_count && `• ${lead.employee_count} employees`}

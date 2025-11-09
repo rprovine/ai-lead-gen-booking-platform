@@ -1953,6 +1953,15 @@ async def get_leads(status: Optional[str] = None, min_score: Optional[float] = N
     if not leads:
         leads = in_memory_db['leads']
 
+    # Enrich each lead with latest prediction details from lead_predictions table
+    for lead in leads:
+        if lead.get('id') and lead.get('conversion_probability'):
+            # Fetch latest prediction details for this lead
+            prediction_details = await supabase_db.get_latest_prediction(lead['id'])
+            if prediction_details:
+                # Merge prediction details into lead object
+                lead['prediction_details'] = prediction_details
+
     # Apply filters if specified
     if status:
         leads = [l for l in leads if l.get('status') == status]

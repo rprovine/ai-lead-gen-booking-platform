@@ -772,13 +772,13 @@ class SupabaseDB:
 
             self.client.table('leads').update(lead_update).eq('id', lead_id).execute()
 
-            # Save prediction record
+            # Save prediction record with all prediction details in factors field
             prediction_record = {
                 'lead_id': lead_id,
                 'prediction_type': 'conversion',
                 'prediction_value': predictions.get('conversion_probability', 0),
-                'confidence': predictions.get('confidence', 50),
-                'factors': predictions.get('factors', {})
+                'confidence': predictions.get('conversion_confidence', 50),
+                'factors': predictions  # Save entire predictions dict for detailed retrieval
             }
 
             self.client.table('lead_predictions').insert(prediction_record).execute()
@@ -786,6 +786,30 @@ class SupabaseDB:
         except Exception as e:
             print(f"Error saving predictions: {e}")
             return False
+
+    async def get_latest_prediction(self, lead_id: str) -> Optional[Dict]:
+        """Get the latest prediction details for a lead from lead_predictions table"""
+        if not self.client:
+            return None
+
+        try:
+            # Get the most recent prediction record
+            response = self.client.table('lead_predictions')\
+                .select('*')\
+                .eq('lead_id', lead_id)\
+                .order('created_at', desc=True)\
+                .limit(1)\
+                .execute()
+
+            if response.data and len(response.data) > 0:
+                prediction = response.data[0]
+                # Return the factors JSON which contains all the detailed prediction data
+                return prediction.get('factors', {})
+
+            return None
+        except Exception as e:
+            print(f"Error getting latest prediction: {e}")
+            return None
 
     async def save_lead_insight(self, lead_id: str, insight_type: str, insight_text: str, priority: str = 'medium') -> bool:
         """Save an AI-generated insight for a lead"""
