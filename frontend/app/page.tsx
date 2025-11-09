@@ -268,7 +268,7 @@ export default function Dashboard() {
   const [sendingToHubSpot, setSendingToHubSpot] = useState<string | null>(null)
 
   // Status filter state
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'OPPORTUNITY' | 'WON' | 'LOST'>('ALL')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'NEW' | 'AI_ANALYZED' | 'CONTACTED' | 'QUALIFIED' | 'OPPORTUNITY' | 'WON' | 'LOST' | 'IN_HUBSPOT'>('ALL')
 
   // Campaign states
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
