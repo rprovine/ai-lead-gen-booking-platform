@@ -277,6 +277,9 @@ export default function Dashboard() {
   const [loadingInsights, setLoadingInsights] = useState(false)
 
   useEffect(() => {
+    // Scroll to top on page load
+    window.scrollTo(0, 0)
+
     fetchAnalytics()
     fetchLeads()
     fetchCampaigns()
