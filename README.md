@@ -41,6 +41,17 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 - **PDF Sales Playbooks**: Professional downloadable playbooks with AI insights and Perplexity research
 - **AI Insights**: Claude-powered sales intelligence with actionable recommendations
 
+### AI Predictive Analytics 🆕
+- **Conversion Probability Predictions**: Gemini 2.5 Flash AI analyzes leads to predict likelihood of conversion (0-100%)
+- **ICP Match Scoring**: Intelligent scoring (0-100%) showing how well leads align with your Ideal Customer Profile
+- **Pipeline Velocity Tracking**: Monitor time spent in each pipeline stage and identify bottlenecks
+- **Conversion Factors Analysis**: Detailed breakdown of positive and negative factors affecting conversion probability
+- **ICP Matching Insights**: View specific factors that match or miss your ICP criteria
+- **Recommended Actions**: AI-powered next steps with priority levels, timing guidance, and reasoning
+- **Best Contact Times**: Intelligent recommendations for optimal outreach timing based on lead characteristics
+- **Dual Prediction Model**: Primary Gemini AI analysis with rule-based fallback for consistent predictions
+- **Workflow Integration**: Predictions available only after AI Intelligence generation to ensure data quality
+
 ### Outreach & CRM
 - **Smart Email Templates**: Auto-generated emails in professional, casual, or consultative styles
 - **Personalized Outreach**: Generate custom emails, SMS, and LinkedIn messages using Claude/Gemini
@@ -58,6 +69,7 @@ AI-powered lead discovery, qualification, and appointment booking system for Len
 **Backend:**
 - FastAPI (Python)
 - LangChain (Claude 3.5 Sonnet, Gemini, OpenAI)
+- Gemini 2.5 Flash for predictive analytics
 - Supabase (PostgreSQL)
 - Perplexity AI (Sonar Pro) for research
 - ReportLab for PDF generation
@@ -256,7 +268,20 @@ For each lead, you can:
 - Review and edit the AI-generated content
 - Send directly through the platform
 
-### 6. Book Appointments
+### 6. Generate Predictive Analytics
+
+After generating AI Intelligence for a lead, click the **"Predict"** button to get comprehensive analytics:
+- **Conversion Probability**: AI-powered prediction of likelihood to convert (0-100%)
+- **Conversion Factors**: Detailed positive and negative factors affecting conversion
+- **ICP Match Score**: How well the lead aligns with your Ideal Customer Profile (0-100%)
+- **ICP Insights**: Specific matching and missing factors for your ICP criteria
+- **Pipeline Velocity**: Time spent in pipeline and velocity score
+- **Recommended Action**: AI-suggested next steps with priority, timing, and reasoning
+- **Best Contact Time**: Optimal time windows for outreach based on lead profile
+
+The Predict button is only available after AI Intelligence has been generated to ensure predictions are based on comprehensive data.
+
+### 7. Book Appointments
 
 Click **"Book Meeting"** to schedule an appointment at your Honolulu office. The system will:
 - Find available time slots
@@ -264,7 +289,7 @@ Click **"Book Meeting"** to schedule an appointment at your Honolulu office. The
 - Send confirmations to the lead
 - Add reminders
 
-### 7. Monitor Analytics
+### 8. Monitor Analytics
 
 The dashboard provides comprehensive metrics:
 
@@ -283,7 +308,7 @@ The dashboard provides comprehensive metrics:
 - Active pipeline count
 - Visual funnel showing stage-to-stage progression
 
-### 8. Automated Daily Discovery (Optional)
+### 9. Automated Daily Discovery (Optional)
 
 Set up a cron job for hands-free lead generation:
 ```bash
@@ -311,6 +336,7 @@ Once the backend is running, visit http://localhost:8000/docs for interactive AP
 - `POST /api/leads/score` - Score a lead
 - `PUT /api/leads/{lead_id}/status` - Update lead pipeline status (NEW, CONTACTED, QUALIFIED, OPPORTUNITY, WON, LOST)
 - `POST /api/leads/{lead_id}/intelligence?refresh=true` - Generate AI intelligence with Perplexity research
+- `POST /api/leads/{lead_id}/predictions` - Generate AI predictive analytics (conversion probability, ICP match, velocity, recommended actions)
 - `GET /api/leads/{lead_id}/playbook` - Download PDF sales playbook
 - `POST /api/leads/{lead_id}/email-template?template_style=professional` - Generate email template
 - `POST /api/leads/{lead_id}/send-to-hubspot` - Sync lead to HubSpot CRM
@@ -359,10 +385,12 @@ ai-lead-gen-booking-platform/
 ├── backend/
 │   ├── main.py                          # FastAPI application
 │   ├── database.py                      # Supabase database client
+│   ├── predictive_analytics.py          # AI predictions with Gemini 2.5 Flash
 │   ├── executive_finder.py              # Multi-source contact finder
 │   ├── lead_enrichment_pipeline.py      # Automated enrichment workflow
 │   ├── query_manager.py                 # Smart query rotation system
 │   ├── icp_manager.py                   # ICP management
+│   ├── backfill_intelligence_flags.py   # Utility to backfill has_intelligence flags
 │   ├── requirements.txt                 # Python dependencies
 │   ├── .env.template                    # Environment variables template
 │   ├── migrations/                      # Database migration scripts
