@@ -3185,11 +3185,11 @@ export default function Dashboard() {
                 <div className="flex justify-between items-center">
                   <div>
                     <CardTitle>AI-Powered Insights</CardTitle>
-                    <CardDescription>Real-time analysis and recommendations from your lead data</CardDescription>
+                    <CardDescription>Real-time analysis and actionable recommendations from Claude AI analyzing your lead pipeline</CardDescription>
                   </div>
-                  <Button onClick={fetchAIInsights} size="sm" variant="outline">
-                    <Brain className="mr-2 h-4 w-4" />
-                    Refresh Insights
+                  <Button onClick={fetchAIInsights} size="sm" variant="outline" disabled={loadingInsights}>
+                    <Brain className={`mr-2 h-4 w-4 ${loadingInsights ? 'animate-pulse' : ''}`} />
+                    {loadingInsights ? 'Analyzing...' : 'Refresh Insights'}
                   </Button>
                 </div>
               </CardHeader>
@@ -3198,13 +3198,96 @@ export default function Dashboard() {
                   <div className="flex flex-col items-center justify-center py-12">
                     <Brain className="h-16 w-16 text-blue-600 animate-pulse mb-4" />
                     <p className="text-lg font-semibold">Analyzing your lead pipeline...</p>
+                    <p className="text-sm text-gray-500 mt-2">Claude AI is reviewing your leads, scores, and pipeline status</p>
                   </div>
                 ) : aiInsights.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Brain className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400">
-                      No insights available. Add more leads to get AI-powered recommendations.
-                    </p>
+                  <div className="max-w-3xl mx-auto">
+                    {/* Header */}
+                    <div className="text-center py-8">
+                      <Brain className="h-16 w-16 mx-auto text-purple-500 mb-4" />
+                      <h3 className="text-2xl font-bold mb-2">Get AI-Powered Pipeline Intelligence</h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-8">
+                        Claude AI analyzes your leads to surface opportunities, patterns, and actionable recommendations
+                      </p>
+                    </div>
+
+                    {/* Benefits Grid */}
+                    <div className="grid md:grid-cols-3 gap-4 mb-8">
+                      <div className="p-4 border rounded-lg bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+                        <Target className="h-8 w-8 text-purple-600 mb-2" />
+                        <h4 className="font-semibold mb-1">Spot Opportunities</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          AI identifies high-value leads and industry clusters ready for targeted outreach
+                        </p>
+                      </div>
+                      <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                        <TrendingUp className="h-8 w-8 text-blue-600 mb-2" />
+                        <h4 className="font-semibold mb-1">Pipeline Health</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Get real-time status on leads awaiting research, CRM sync, and next actions
+                        </p>
+                      </div>
+                      <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                        <Sparkles className="h-8 w-8 text-green-600 mb-2" />
+                        <h4 className="font-semibold mb-1">Smart Recommendations</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Receive prioritized action items based on your current pipeline state
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* What You'll See */}
+                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6 mb-8">
+                      <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-purple-600" />
+                        Insights You'll Receive
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold">1</div>
+                          <div>
+                            <p className="font-medium">High-Value Lead Alerts</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">See which leads (75+ score) need immediate attention with estimated pipeline value</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold">2</div>
+                          <div>
+                            <p className="font-medium">Industry Clustering</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Discover sector opportunities where you have multiple qualified leads for targeted campaigns</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold">3</div>
+                          <div>
+                            <p className="font-medium">Pipeline Status Breakdown</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Track leads in NEW, researched, and CRM-synced stages with momentum tips</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold">4</div>
+                          <div>
+                            <p className="font-medium">Recommended Next Actions</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Prioritized action items: which leads to research, when to create campaigns, CRM sync needs</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="text-center">
+                      <Button
+                        onClick={fetchAIInsights}
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 px-8 py-6 text-lg"
+                        disabled={loadingInsights}
+                      >
+                        <Brain className="mr-2 h-5 w-5" />
+                        Generate AI Insights
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-3">
+                        💡 <strong>Tip:</strong> Insights update automatically, but click "Refresh" anytime for the latest analysis
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
