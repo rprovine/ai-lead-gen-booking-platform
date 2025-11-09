@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -39,7 +39,10 @@ import {
   XCircle,
   Zap,
   Clock,
-  Circle
+  Circle,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import Link from 'next/link'
 import axios from 'axios'
@@ -301,6 +304,21 @@ export default function Dashboard() {
   const [aiInsights, setAiInsights] = useState<any[]>([])
   const [loadingInsights, setLoadingInsights] = useState(false)
 
+  // Active tab state
+  const [activeTab, setActiveTab] = useState('leads')
+
+  // Active filter info for display
+  const [activeFilterInfo, setActiveFilterInfo] = useState<string | null>(null)
+  const [activeScoreFilter, setActiveScoreFilter] = useState<number | null>(null)
+
+  // Scroll to top button state
+  const [showScrollTop, setShowScrollTop] = useState(false)
+
+  // Status filter tabs scroll state
+  const tabsScrollRef = useRef<HTMLDivElement>(null)
+  const [showLeftScroll, setShowLeftScroll] = useState(false)
+  const [showRightScroll, setShowRightScroll] = useState(false)
+
   useEffect(() => {
     // Scroll to top on page load - do it immediately and after a small delay
     // to override any scroll restoration
@@ -314,6 +332,60 @@ export default function Dashboard() {
     fetchAppointments()
     fetchAIInsights()
   }, [])
+
+  // Track scroll position to show/hide scroll to top button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // Check scroll position of tabs container
+  const checkTabsScroll = () => {
+    if (tabsScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsScrollRef.current
+      setShowLeftScroll(scrollLeft > 0)
+      setShowRightScroll(scrollLeft < scrollWidth - clientWidth - 10)
+    }
+  }
+
+  // Scroll tabs left or right
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabsScrollRef.current) {
+      const scrollAmount = 200
+      const newScrollLeft = direction === 'left'
+        ? tabsScrollRef.current.scrollLeft - scrollAmount
+        : tabsScrollRef.current.scrollLeft + scrollAmount
+
+      tabsScrollRef.current.scrollTo({
+        left: newScrollLeft,
+        behavior: 'smooth'
+      })
+    }
+  }
+
+  // Check scroll on mount and when leads change
+  useEffect(() => {
+    checkTabsScroll()
+    // Add event listener for scroll
+    const tabsElement = tabsScrollRef.current
+    if (tabsElement) {
+      tabsElement.addEventListener('scroll', checkTabsScroll)
+      // Also check on window resize
+      window.addEventListener('resize', checkTabsScroll)
+      return () => {
+        tabsElement.removeEventListener('scroll', checkTabsScroll)
+        window.removeEventListener('resize', checkTabsScroll)
+      }
+    }
+  }, [leads])
 
   const fetchAnalytics = async () => {
     try {
@@ -628,6 +700,120 @@ export default function Dashboard() {
     } finally {
       setLoadingInsights(false)
     }
+  }
+
+  const handleInsightAction = (action: { label: string; filter: string }) => {
+    // Parse the filter string (e.g., "score>=75,status=NEW" or "action=create_campaign")
+    const filters = action.filter.split(',')
+
+    console.log('=== INSIGHT ACTION DEBUG ===')
+    console.log('Full action object:', action)
+    console.log('Filter string:', action.filter)
+    console.log('Filters array:', filters)
+
+    // Check if this is a "Create Campaign" action (by label)
+    if (action.label === 'Create Campaign') {
+      console.log('Opening create campaign modal')
+      // Switch to Campaigns tab and open create campaign modal
+      setActiveTab('campaigns')
+      setTimeout(() => {
+        setShowCreateCampaign(true)
+        setActiveFilterInfo(null)
+      }, 100)
+      return
+    }
+
+    // Otherwise, switch to Leads tab and apply filters
+    setActiveTab('leads')
+
+    // Build filter description for the banner
+    let filterDescription = ''
+    let statusApplied = false
+    let hasScoreFilter = false
+    let minScore = ''
+
+    // Apply filters from the insight action
+    filters.forEach(filter => {
+      console.log('Processing filter:', filter)
+
+      // Handle different filter formats
+      if (filter.includes('>=')) {
+        // Score filter like "score>=75"
+        const match = filter.match(/score>=(\d+)/)
+        if (match) {
+          minScore = match[1]
+          hasScoreFilter = true
+          console.log('  → Score filter detected, minScore:', minScore)
+        }
+      } else if (filter.includes('=')) {
+        // Regular key=value filter
+        const [key, value] = filter.split('=')
+        console.log('  Key:', key, '| Value:', value)
+
+        if (key === 'status') {
+          // Set status filter - but will override to ALL if there's a score filter
+          const statusValue = value.toUpperCase() as 'ALL' | 'NEW' | 'AI_ANALYZED' | 'CONTACTED' | 'QUALIFIED' | 'OPPORTUNITY' | 'WON' | 'LOST' | 'IN_HUBSPOT'
+          statusApplied = true
+          console.log('  → Status filter detected:', statusValue)
+        }
+      }
+    })
+
+    console.log('After parsing - hasScoreFilter:', hasScoreFilter, '| statusApplied:', statusApplied, '| minScore:', minScore)
+
+    // Determine what to show
+    if (hasScoreFilter) {
+      // For high-score leads, show ALL statuses, not just NEW
+      setStatusFilter('ALL')
+      setActiveScoreFilter(parseInt(minScore))
+
+      // Build user-friendly description
+      if (minScore === '75') {
+        filterDescription = 'High-score leads'
+      } else {
+        filterDescription = `Leads with score ≥ ${minScore}`
+      }
+      console.log('Score filter path - filterDescription:', filterDescription)
+    } else if (statusApplied) {
+      // Only status filter, no score filter
+      const currentStatus = filters.find(f => f.startsWith('status='))?.split('=')[1].toUpperCase() || ''
+      const statusValue = currentStatus as 'ALL' | 'NEW' | 'AI_ANALYZED' | 'CONTACTED' | 'QUALIFIED' | 'OPPORTUNITY' | 'WON' | 'LOST' | 'IN_HUBSPOT'
+      setStatusFilter(statusValue)
+      setActiveScoreFilter(null)
+
+      const statusMap: Record<string, string> = {
+        'NEW': 'New leads',
+        'AI_ANALYZED': 'AI-analyzed leads',
+        'CONTACTED': 'Contacted leads',
+        'QUALIFIED': 'Qualified leads',
+        'OPPORTUNITY': 'Opportunity leads',
+        'WON': 'Won leads',
+        'LOST': 'Lost leads',
+        'IN_HUBSPOT': 'Leads in HubSpot'
+      }
+      filterDescription = statusMap[currentStatus] || `${currentStatus} leads`
+      console.log('Status filter path - filterDescription:', filterDescription)
+    }
+
+    // Set the filter info banner
+    console.log('Final filterDescription before setting banner:', filterDescription)
+    if (filterDescription) {
+      setActiveFilterInfo(filterDescription)
+      console.log('Banner set to:', filterDescription)
+    }
+    console.log('=== END DEBUG ===')
+
+    // Scroll to first lead card after a brief delay to let the tab switch
+    setTimeout(() => {
+      // Find the first lead card element
+      const firstLeadCard = document.querySelector('[data-lead-card]')
+      if (firstLeadCard) {
+        firstLeadCard.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      } else {
+        // Fallback to top if no lead cards found
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    }, 150)
   }
 
   const openBookingModal = (lead: Lead) => {
@@ -2134,7 +2320,7 @@ export default function Dashboard() {
         )}
 
         {/* Main Content */}
-        <Tabs defaultValue="leads" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
@@ -2170,10 +2356,89 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Active Filter Banner */}
+                {activeFilterInfo && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-600" />
+                      <span className="font-medium text-blue-900 dark:text-blue-100">
+                        {(() => {
+                          // Calculate count of filtered leads
+                          const filteredCount = leads.filter(lead => {
+                            // Apply score filter first if active
+                            if (activeScoreFilter !== null) {
+                              const leadScore = lead.score || 0
+                              if (leadScore < activeScoreFilter) return false
+                            }
+
+                            // Then apply status filter
+                            if (statusFilter === 'ALL') return true
+                            if (statusFilter === 'IN_HUBSPOT') return !!lead.hubspot_company_id
+                            if (statusFilter === 'AI_ANALYZED') return !!lead.has_intelligence
+                            return lead.status === statusFilter
+                          }).length
+
+                          return `${filteredCount} ${activeFilterInfo}`
+                        })()}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setActiveFilterInfo(null)
+                        setStatusFilter('ALL')
+                        setActiveScoreFilter(null)
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      Clear Filter
+                    </Button>
+                  </motion.div>
+                )}
+
                 {/* Status Filter Tabs */}
-                <div className="mb-6 flex gap-2 border-b overflow-x-auto">
+                <div className="relative mb-6">
+                  {/* Left scroll button */}
+                  {showLeftScroll && (
+                    <button
+                      onClick={() => scrollTabs('left')}
+                      className="absolute left-0 top-0 bottom-0 z-10 w-10 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      aria-label="Scroll left"
+                    >
+                      <ChevronLeft className="h-6 w-6 text-gray-900 dark:text-gray-100" />
+                    </button>
+                  )}
+
+                  {/* Right scroll button */}
+                  {showRightScroll && (
+                    <button
+                      onClick={() => scrollTabs('right')}
+                      className="absolute right-0 top-0 bottom-0 z-10 w-10 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-md flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      aria-label="Scroll right"
+                    >
+                      <ChevronRight className="h-6 w-6 text-gray-900 dark:text-gray-100" />
+                    </button>
+                  )}
+
+                  <div
+                    ref={tabsScrollRef}
+                    className="flex gap-2 border-b overflow-x-auto scrollbar-hide"
+                    style={{
+                      paddingLeft: showLeftScroll ? '44px' : '0',
+                      paddingRight: showRightScroll ? '44px' : '0'
+                    }}
+                  >
                   <button
-                    onClick={() => setStatusFilter('ALL')}
+                    onClick={() => {
+                      setStatusFilter('ALL')
+                      setActiveFilterInfo(null)
+                      setActiveScoreFilter(null)
+                    }}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'ALL'
                         ? 'border-blue-600 text-blue-600 font-medium'
@@ -2184,7 +2449,11 @@ export default function Dashboard() {
                   </button>
 
                   <button
-                    onClick={() => setStatusFilter('NEW')}
+                    onClick={() => {
+                      setStatusFilter('NEW')
+                      setActiveFilterInfo(null)
+                      setActiveScoreFilter(null)
+                    }}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'NEW'
                         ? 'border-gray-600 text-gray-600 font-medium'
@@ -2197,7 +2466,11 @@ export default function Dashboard() {
 
                   {/* AI Analyzed Filter - Second step after new lead */}
                   <button
-                    onClick={() => setStatusFilter('AI_ANALYZED')}
+                    onClick={() => {
+                      setStatusFilter('AI_ANALYZED')
+                      setActiveFilterInfo(null)
+                      setActiveScoreFilter(null)
+                    }}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'AI_ANALYZED'
                         ? 'border-purple-600 text-purple-600 font-medium'
@@ -2211,7 +2484,11 @@ export default function Dashboard() {
                   {/* Divider */}
                   <div className="border-l border-gray-300 mx-2"></div>
                   <button
-                    onClick={() => setStatusFilter('CONTACTED')}
+                    onClick={() => {
+                      setStatusFilter('CONTACTED')
+                      setActiveFilterInfo(null)
+                      setActiveScoreFilter(null)
+                    }}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'CONTACTED'
                         ? 'border-blue-600 text-blue-600 font-medium'
@@ -2222,7 +2499,11 @@ export default function Dashboard() {
                     Contacted ({leads.filter(l => l.status === 'CONTACTED').length})
                   </button>
                   <button
-                    onClick={() => setStatusFilter('QUALIFIED')}
+                    onClick={() => {
+                      setStatusFilter('QUALIFIED')
+                      setActiveFilterInfo(null)
+                      setActiveScoreFilter(null)
+                    }}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'QUALIFIED'
                         ? 'border-indigo-600 text-indigo-600 font-medium'
@@ -2233,7 +2514,11 @@ export default function Dashboard() {
                     Qualified ({leads.filter(l => l.status === 'QUALIFIED').length})
                   </button>
                   <button
-                    onClick={() => setStatusFilter('OPPORTUNITY')}
+                    onClick={() => {
+                      setStatusFilter('OPPORTUNITY')
+                      setActiveFilterInfo(null)
+                      setActiveScoreFilter(null)
+                    }}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'OPPORTUNITY'
                         ? 'border-yellow-600 text-yellow-600 font-medium'
@@ -2244,7 +2529,11 @@ export default function Dashboard() {
                     Opportunity ({leads.filter(l => l.status === 'OPPORTUNITY').length})
                   </button>
                   <button
-                    onClick={() => setStatusFilter('WON')}
+                    onClick={() => {
+                      setStatusFilter('WON')
+                      setActiveFilterInfo(null)
+                      setActiveScoreFilter(null)
+                    }}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'WON'
                         ? 'border-green-600 text-green-600 font-medium'
@@ -2255,7 +2544,11 @@ export default function Dashboard() {
                     Won ({leads.filter(l => l.status === 'WON').length})
                   </button>
                   <button
-                    onClick={() => setStatusFilter('LOST')}
+                    onClick={() => {
+                      setStatusFilter('LOST')
+                      setActiveFilterInfo(null)
+                      setActiveScoreFilter(null)
+                    }}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'LOST'
                         ? 'border-red-600 text-red-600 font-medium'
@@ -2271,7 +2564,11 @@ export default function Dashboard() {
 
                   {/* HubSpot Filter */}
                   <button
-                    onClick={() => setStatusFilter('IN_HUBSPOT')}
+                    onClick={() => {
+                      setStatusFilter('IN_HUBSPOT')
+                      setActiveFilterInfo(null)
+                      setActiveScoreFilter(null)
+                    }}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'IN_HUBSPOT'
                         ? 'border-orange-600 text-orange-600 font-medium'
@@ -2281,6 +2578,7 @@ export default function Dashboard() {
                     <Upload className="inline h-3 w-3 mr-1" />
                     In HubSpot ({leads.filter(l => l.hubspot_company_id).length})
                   </button>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -2293,6 +2591,13 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     leads.filter(lead => {
+                      // Apply score filter first if active
+                      if (activeScoreFilter !== null) {
+                        const leadScore = lead.score || 0
+                        if (leadScore < activeScoreFilter) return false
+                      }
+
+                      // Then apply status filter
                       if (statusFilter === 'ALL') return true
                       if (statusFilter === 'IN_HUBSPOT') return !!lead.hubspot_company_id
                       if (statusFilter === 'AI_ANALYZED') return !!lead.has_intelligence
@@ -2300,6 +2605,7 @@ export default function Dashboard() {
                     }).map((lead, index) => (
                       <motion.div
                         key={lead.id || index}
+                        data-lead-card
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
@@ -3320,8 +3626,7 @@ export default function Dashboard() {
                             )}
                             {insight.action && (
                               <Button size="sm" className="mt-3" onClick={() => {
-                                // You could implement filtering here in the future
-                                console.log('Filter:', insight.action.filter)
+                                handleInsightAction(insight.action)
                               }}>
                                 {insight.action.label}
                               </Button>
@@ -3337,6 +3642,20 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 z-50 p-3 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl transition-shadow duration-200"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="h-6 w-6" />
+        </motion.button>
+      )}
     </div>
   )
 }

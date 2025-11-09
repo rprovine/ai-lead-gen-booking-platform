@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-11-09
+
+### Improved
+- **Enhanced Status Filter Tabs UX**:
+  - Added prominent scroll arrow buttons on left/right sides when tabs overflow
+  - Implemented solid backgrounds with borders and shadows for better visibility
+  - Added dynamic padding to prevent text overlap with arrows
+  - Increased icon size and contrast for improved accessibility
+  - Smart show/hide logic based on scroll position
+  - Smooth scroll animations when clicking arrows
+  - Responsive behavior that adapts to screen size changes
+  - Added `scrollbar-hide` utility class for cleaner appearance
+
+- **AI Insights Action Buttons**:
+  - Fixed "View High-Score Leads" functionality with proper filter parsing
+  - Fixed "Create Campaign" button to correctly open campaign creation modal
+  - Fixed "View New Leads" to navigate to leads tab with proper filtering
+  - Added visual filter banner showing active filters with lead count
+  - Implemented scroll-to-first-lead functionality after filtering
+  - Added clear filter button for easy reset
+
+- **Navigation Improvements**:
+  - Added floating scroll-to-top button that appears after scrolling 400px
+  - Smooth scroll animations throughout the application
+  - Improved tab switching with controlled state management
+
 ## [0.2.0] - 2025-11-08
 
 ### Added - Comprehensive Settings & Configuration System
