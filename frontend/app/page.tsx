@@ -2512,8 +2512,8 @@ export default function Dashboard() {
                               }
                             }}
                             className="bg-gradient-to-r from-green-600 to-emerald-600"
-                            title="Generate AI Predictions"
-                            disabled={generatingPredictions === lead.id}
+                            title={!lead.has_intelligence ? "Generate AI Intelligence first" : "Generate AI Predictions"}
+                            disabled={generatingPredictions === lead.id || !lead.has_intelligence}
                           >
                             {generatingPredictions === lead.id ? (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
