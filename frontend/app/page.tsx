@@ -277,8 +277,11 @@ export default function Dashboard() {
   const [loadingInsights, setLoadingInsights] = useState(false)
 
   useEffect(() => {
-    // Scroll to top on page load
+    // Scroll to top on page load - do it immediately and after a small delay
+    // to override any scroll restoration
     window.scrollTo(0, 0)
+    setTimeout(() => window.scrollTo(0, 0), 0)
+    setTimeout(() => window.scrollTo(0, 0), 100)
 
     fetchAnalytics()
     fetchLeads()
