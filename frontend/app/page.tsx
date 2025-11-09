@@ -2504,11 +2504,11 @@ export default function Dashboard() {
                             <Brain className="mr-2 h-4 w-4" />
                             AI Intelligence
                           </Button>
-                          <div title={!lead.has_intelligence ? "Generate AI Intelligence first" : "Generate AI Predictions"}>
+                          <span className="relative group inline-block">
                             <Button
                               size="sm"
                               onClick={() => {
-                                if (lead.id) {
+                                if (lead.id && lead.has_intelligence) {
                                   generatePredictions(lead.id)
                                 }
                               }}
@@ -2522,7 +2522,13 @@ export default function Dashboard() {
                               )}
                               Predict
                             </Button>
-                          </div>
+                            {!lead.has_intelligence && (
+                              <span className="invisible group-hover:visible absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 text-sm text-white bg-gray-900 rounded whitespace-nowrap z-50">
+                                Generate AI Intelligence first
+                                <span className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
+                              </span>
+                            )}
+                          </span>
                           <Button
                             size="sm"
                             onClick={() => downloadPlaybook(lead)}
