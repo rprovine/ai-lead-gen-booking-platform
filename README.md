@@ -641,6 +641,17 @@ This platform is built for LeniLani Consulting, a Honolulu-based technology cons
 - [ ] Mobile app (React Native)
 - [ ] Multi-language support (Hawaiian, Japanese, Chinese)
 
+## Recent Updates
+
+### November 9, 2025 - Appointment System Improvements
+- **Fixed Appointment Display**: Resolved issue where appointments created from Leads tab weren't showing in Appointments tab
+- **Database Schema Updates**: Added missing columns (`organization_id`, `updated_at`) to appointments table
+- **Simplified RLS**: Disabled Row Level Security for single-tenant simplicity
+- **Navigation Improvements**: Fixed "Go to Leads Tab" button to use proper React state management
+- **Scroll Behavior**: Smart scroll behavior - Leads tab scrolls to top, Appointments tab preserves position
+- **Supabase Integration**: All appointments now properly persist to Supabase database
+- **Removed Duplicate Endpoints**: Cleaned up redundant API routes for appointments
+
 ---
 
 Built with ❤️ in Honolulu, Hawaii

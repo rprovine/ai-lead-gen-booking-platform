@@ -2979,21 +2979,6 @@ async def book_appointment(lead_id: str, date_time: str):
     appointment = await scheduler.book_appointment(lead_id, date_time)
     return {"appointment": appointment.dict(), "message": "Appointment booked successfully"}
 
-@app.get("/api/appointments")
-async def get_appointments():
-    """Get all appointments"""
-    appointments = []
-
-    if db:
-        try:
-            appointments = [doc.to_dict() for doc in db.collection('appointments').stream()]
-        except Exception as e:
-            print(f"Error fetching from Firebase: {e}")
-            appointments = in_memory_db['appointments']
-    else:
-        appointments = in_memory_db['appointments']
-
-    return appointments
 
 @app.get("/api/analytics/dashboard")
 async def get_analytics():

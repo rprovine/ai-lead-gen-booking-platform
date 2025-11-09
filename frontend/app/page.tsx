@@ -307,6 +307,13 @@ export default function Dashboard() {
   // Active tab state
   const [activeTab, setActiveTab] = useState('leads')
 
+  // Scroll to top when switching to leads tab
+  useEffect(() => {
+    if (activeTab === 'leads') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [activeTab])
+
   // Active filter info for display
   const [activeFilterInfo, setActiveFilterInfo] = useState<string | null>(null)
   const [activeScoreFilter, setActiveScoreFilter] = useState<number | null>(null)
@@ -3388,11 +3395,7 @@ export default function Dashboard() {
                           💡 <strong>Tip:</strong> Focus on leads with high scores (70+) or those in "QUALIFIED" or "OPPORTUNITY" status for the best conversion rates
                         </p>
                         <Button
-                          onClick={() => {
-                            // Switch to Leads tab
-                            const leadsTab = document.querySelector('[value="leads"]') as HTMLElement
-                            if (leadsTab) leadsTab.click()
-                          }}
+                          onClick={() => setActiveTab('leads')}
                           className="bg-gradient-to-r from-blue-600 to-purple-600"
                         >
                           <Calendar className="mr-2 h-4 w-4" />
