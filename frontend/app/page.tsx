@@ -2504,24 +2504,25 @@ export default function Dashboard() {
                             <Brain className="mr-2 h-4 w-4" />
                             AI Intelligence
                           </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              if (lead.id) {
-                                generatePredictions(lead.id)
-                              }
-                            }}
-                            className="bg-gradient-to-r from-green-600 to-emerald-600"
-                            title={!lead.has_intelligence ? "Generate AI Intelligence first" : "Generate AI Predictions"}
-                            disabled={generatingPredictions === lead.id || !lead.has_intelligence}
-                          >
-                            {generatingPredictions === lead.id ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <TrendingUp className="mr-2 h-4 w-4" />
-                            )}
-                            Predict
-                          </Button>
+                          <div title={!lead.has_intelligence ? "Generate AI Intelligence first" : "Generate AI Predictions"}>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                if (lead.id) {
+                                  generatePredictions(lead.id)
+                                }
+                              }}
+                              className="bg-gradient-to-r from-green-600 to-emerald-600"
+                              disabled={generatingPredictions === lead.id || !lead.has_intelligence}
+                            >
+                              {generatingPredictions === lead.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <TrendingUp className="mr-2 h-4 w-4" />
+                              )}
+                              Predict
+                            </Button>
+                          </div>
                           <Button
                             size="sm"
                             onClick={() => downloadPlaybook(lead)}
