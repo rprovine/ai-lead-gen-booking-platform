@@ -2143,6 +2143,7 @@ export default function Dashboard() {
                   >
                     All ({leads.length})
                   </button>
+
                   <button
                     onClick={() => setStatusFilter('NEW')}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
@@ -2154,6 +2155,22 @@ export default function Dashboard() {
                     <Circle className="inline h-3 w-3 mr-1" />
                     New ({leads.filter(l => l.status === 'NEW').length})
                   </button>
+
+                  {/* AI Analyzed Filter - Second step after new lead */}
+                  <button
+                    onClick={() => setStatusFilter('AI_ANALYZED')}
+                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
+                      statusFilter === 'AI_ANALYZED'
+                        ? 'border-purple-600 text-purple-600 font-medium'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Brain className="inline h-3 w-3 mr-1" />
+                    AI Analyzed ({leads.filter(l => l.has_intelligence).length})
+                  </button>
+
+                  {/* Divider */}
+                  <div className="border-l border-gray-300 mx-2"></div>
                   <button
                     onClick={() => setStatusFilter('CONTACTED')}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
@@ -2169,7 +2186,7 @@ export default function Dashboard() {
                     onClick={() => setStatusFilter('QUALIFIED')}
                     className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
                       statusFilter === 'QUALIFIED'
-                        ? 'border-purple-600 text-purple-600 font-medium'
+                        ? 'border-indigo-600 text-indigo-600 font-medium'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
                     }`}
                   >
@@ -2224,19 +2241,6 @@ export default function Dashboard() {
                   >
                     <Upload className="inline h-3 w-3 mr-1" />
                     In HubSpot ({leads.filter(l => l.hubspot_company_id).length})
-                  </button>
-
-                  {/* AI Analyzed Filter */}
-                  <button
-                    onClick={() => setStatusFilter('AI_ANALYZED')}
-                    className={`px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
-                      statusFilter === 'AI_ANALYZED'
-                        ? 'border-purple-600 text-purple-600 font-medium'
-                        : 'border-transparent text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <Brain className="inline h-3 w-3 mr-1" />
-                    AI Analyzed ({leads.filter(l => l.has_intelligence).length})
                   </button>
                 </div>
 
