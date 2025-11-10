@@ -1,0 +1,73 @@
+services:
+  - type: web
+    name: lead-gen-backend
+    runtime: python
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_AI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: LANGCHAIN_API_KEY
+        sync: false
+      - key: LANGCHAIN_TRACING_V2
+        value: "true"
+      - key: LANGCHAIN_PROJECT
+        value: lenilani-leads
+      - key: HUBSPOT_API_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        value: your_key_here
+      - key: TWILIO_ACCOUNT_SID
+        value: your_sid_here
+      - key: TWILIO_AUTH_TOKEN
+        value: your_token_here
+      - key: TWILIO_PHONE_NUMBER
+        value: +1808xxxxxxx
+      - key: SERPAPI_KEY
+        sync: false
+      - key: LINKEDIN_API_KEY
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false
+      - key: USE_REAL_DATA
+        value: "true"
+      - key: LINKEDIN_SALES_NAV_API_KEY
+        sync: false
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: LINKEDIN_ACCESS_TOKEN
+        value: ""
+      - key: APOLLO_API_KEY
+        sync: false
+      - key: HUNTER_API_KEY
+        sync: false
+      - key: ROCKETREACH_API_KEY
+        value: ""
+      - key: CLEARBIT_API_KEY
+        value: ""
+      - key: CRUNCHBASE_API_KEY
+        value: ""
+      - key: ZOOMINFO_API_KEY
+        value: ""
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: GCP_PROJECT_ID
+        value: lenilani-leads
+      - key: GCP_REGION
+        value: us-west1
+      - key: JWT_SECRET_KEY
+        value: your_secret_key_change_in_production
+      - key: OFFICE_ADDRESS
+        value: "1050 Queen Street, Suite 100, Honolulu, HI 96814"
