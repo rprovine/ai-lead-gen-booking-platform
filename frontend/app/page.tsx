@@ -106,11 +106,25 @@ interface Lead {
   intelligence_generated_at?: string
   // Predictive analytics fields
   conversion_probability?: number
+  conversion_confidence?: number
+  conversion_factors?: {
+    positive?: string[]
+    negative?: string[]
+  }
   icp_match_score?: number
+  icp_matching_factors?: string[]
+  icp_missing_factors?: string[]
   lead_velocity_score?: number
+  velocity_score?: number
+  velocity_insight?: string
+  days_in_pipeline?: number
   recommended_action?: string
+  action_reasoning?: string
+  action_priority?: string
+  action_timing?: string
   best_contact_time?: string
   last_prediction_at?: string
+  generated_at?: string
   // Full prediction details
   prediction_details?: PredictionDetails
 }
@@ -2662,7 +2676,7 @@ export default function Dashboard() {
                                       <span className="font-semibold text-green-900 dark:text-green-100">
                                         {pd.conversion_probability.toFixed(0)}% Conversion
                                       </span>
-                                      {pd.conversion_confidence && (
+                                      {'conversion_confidence' in pd && pd.conversion_confidence && (
                                         <span className="text-gray-600 dark:text-gray-400 ml-1">
                                           ({pd.conversion_confidence.toFixed(0)}% confident)
                                         </span>
